@@ -26,7 +26,13 @@ export type RoleType =
   | "BudgetOfficer"
   | "ProcurementOfficer"
   | "Auditor"
-  | "Guest";
+  | "Guest"
+  | "MunicipalAccountant"
+  | "BarangayTreasurer"
+  | "SKTreasurer"
+  | "SKChairman"
+  | "BarangayBookkeeper"
+  | "SKBookkeeper";
 
 export interface UserProfile {
   uid: string;

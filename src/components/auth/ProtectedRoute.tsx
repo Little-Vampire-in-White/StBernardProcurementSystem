@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../../context/AuthContext";
+import { isRoleAllowed } from "../../lib/roles";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -33,7 +34,7 @@ export default function ProtectedRoute({
     return <Navigate to="/signin" state={{ approvalNotice: "Your account is pending administrator approval." }} replace />;
   }
 
-  if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
+  if (allowedRoles && profile && !isRoleAllowed(profile.role, allowedRoles as import("../../context/AuthContext").RoleType[])) {
     return <Navigate to="/unauthorized" replace />;
   }
 

@@ -9,6 +9,7 @@ const AuditLog = require('./audit_log')(sequelize);
 const Approval = require('./approval')(sequelize);
 const BarangayBudget = require('./barangay_budget')(sequelize);
 const Notification = require('./notification')(sequelize);
+const UserBarangayAssignment = require('./user_barangay_assignment')(sequelize);
 
 // associations
 ProcurementRequest.hasMany(ProcurementDocument, { foreignKey: 'request_id', as: 'documents' });
@@ -20,6 +21,8 @@ User.hasMany(Approval, { foreignKey: 'approved_by', as: 'approvals' });
 Approval.belongsTo(User, { foreignKey: 'approved_by', as: 'approver' });
 Barangay.hasMany(User, { foreignKey: 'barangay_id', as: 'users' });
 User.belongsTo(Barangay, { foreignKey: 'barangay_id', as: 'barangay' });
+User.belongsToMany(Barangay, { through: UserBarangayAssignment, foreignKey: 'user_id', otherKey: 'barangay_id', as: 'assignedBarangays' });
+Barangay.belongsToMany(User, { through: UserBarangayAssignment, foreignKey: 'barangay_id', otherKey: 'user_id', as: 'assignedBookkeepers' });
 Barangay.hasMany(BarangayBudget, { foreignKey: 'barangay_id', as: 'budgets' });
 BarangayBudget.belongsTo(Barangay, { foreignKey: 'barangay_id', as: 'barangay' });
 
@@ -43,4 +46,5 @@ module.exports = {
   Approval,
   BarangayBudget,
   Notification,
+  UserBarangayAssignment,
 };

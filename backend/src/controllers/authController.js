@@ -1,18 +1,8 @@
 const { User, Barangay } = require('../models');
 const { fn, col, where } = require('sequelize');
 const { storeUpload } = require('../services/uploads');
-
-const VALID_ROLES = [
-  'Administrator',
-  'FinanceManager',
-  'BarangayStaff',
-  'Auditor',
-  'BudgetOfficer',
-  'ProcurementOfficer',
-  'Requester',
-  'DepartmentHead',
-  'Guest',
-];
+const { VALID_ROLES, ROLES } = require('../constants/roles');
+const { assertRoleCapacity } = require('../services/roleCapacity');
 
 async function getCurrentUserProfile(req, res) {
   if (!req.user) {
@@ -81,9 +71,10 @@ async function registerUserProfile(req, res) {
     return res.status(400).json({ error: 'missing_user_identity' });
   }
 
-  const normalizedRole = VALID_ROLES.includes(role) ? role : 'Requester';
+  const requestedRole = typeof role === 'string' ? role.trim() : role;
+  const normalizedRole = VALID_ROLES.includes(requestedRole) ? requestedRole : ROLES.BARANGAY_TREASURER;
   // Privileged staff roles must be approved; users cannot self-assign access.
-  const requiresApproval = !['Requester', 'Guest'].includes(normalizedRole);
+  const requiresApproval = normalizedRole !== ROLES.ADMINISTRATOR;
 
   let user = await User.findOne({ where: { firebase_uid: firebaseUid } });
   if (!user) {
@@ -112,12 +103,22 @@ async function registerUserProfile(req, res) {
       });
     }
 
+    try {
+      await assertRoleCapacity({
+        role: normalizedRole,
+        barangayId: barangay_id ? Number(barangay_id) : null,
+        status: requiresApproval ? 'pending' : 'active',
+        excludeUserId: user.id,
+      });
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ error: error.message, details: error.details });
+    }
     user.firebase_uid = firebaseUid;
     user.email = email;
     user.display_name = display_name || user.display_name || email;
     user.role = normalizedRole || user.role;
     if (barangay_id !== undefined) {
-      user.barangay_id = barangay_id || null;
+      user.barangay_id = [ROLES.MUNICIPAL_ACCOUNTANT, ROLES.SK_BOOKKEEPER].includes(normalizedRole) ? null : barangay_id || null;
     }
     if (department !== undefined) {
       user.department = department || null;
@@ -129,12 +130,21 @@ async function registerUserProfile(req, res) {
     user.pending_role = requiresApproval ? normalizedRole : null;
     await user.save();
   } else {
+    try {
+      await assertRoleCapacity({
+        role: normalizedRole,
+        barangayId: barangay_id ? Number(barangay_id) : null,
+        status: requiresApproval ? 'pending' : 'active',
+      });
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ error: error.message, details: error.details });
+    }
     user = await User.create({
       firebase_uid: firebaseUid,
       email,
       display_name: display_name || email,
       role: normalizedRole,
-      barangay_id: barangay_id || null,
+      barangay_id: [ROLES.MUNICIPAL_ACCOUNTANT, ROLES.SK_BOOKKEEPER].includes(normalizedRole) ? null : barangay_id || null,
       department: department || null,
       profile_image_url: profile_image_url || null,
       status: requiresApproval ? 'pending' : 'active',

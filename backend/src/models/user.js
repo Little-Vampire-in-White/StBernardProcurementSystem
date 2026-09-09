@@ -18,6 +18,12 @@ module.exports = (sequelize) => {
         'Requester',
         'DepartmentHead',
         'Guest'
+        ,'MunicipalAccountant'
+        ,'BarangayTreasurer'
+        ,'SKTreasurer'
+        ,'SKChairman'
+        ,'BarangayBookkeeper'
+        ,'SKBookkeeper'
       ),
       allowNull: false,
       defaultValue: 'BarangayStaff',

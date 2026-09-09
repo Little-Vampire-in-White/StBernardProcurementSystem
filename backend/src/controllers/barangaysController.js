@@ -1,13 +1,14 @@
 const fs = require('fs');
 const path = require('path');
-const { Barangay, User, ProcurementRequest, Approval } = require('../models');
+const { Barangay, User, ProcurementRequest, Approval, UserBarangayAssignment, sequelize } = require('../models');
 const { admin } = require('../services/firebaseAdmin');
 const { storeUpload } = require('../services/uploads');
 
 const uploadDir = path.join(process.cwd(), 'uploads', 'barangays');
 fs.mkdirSync(uploadDir, { recursive: true });
 
-const VALID_ROLES = ['Administrator', 'FinanceManager', 'BarangayStaff', 'Auditor', 'BudgetOfficer', 'ProcurementOfficer', 'Requester', 'DepartmentHead', 'Guest'];
+const { VALID_ROLES, ROLES } = require('../constants/roles');
+const { assertRoleCapacity } = require('../services/roleCapacity');
 const VALID_STATUSES = ['active', 'pending', 'rejected'];
 
 async function listBarangays(req, res) {
@@ -58,6 +59,36 @@ async function createBarangay(req, res) {
     });
   } catch (error) {
     console.error('createBarangay error', error);
+    return res.status(500).json({ error: 'internal' });
+  }
+}
+
+async function listMyAssignedBarangays(req, res) {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
+    const canViewAll = [ROLES.MUNICIPAL_ACCOUNTANT, ROLES.ADMINISTRATOR].includes(req.user.role);
+    if (!canViewAll && req.user.role !== ROLES.BARANGAY_BOOKKEEPER) return res.status(403).json({ error: 'forbidden' });
+
+    if (canViewAll) {
+      const barangays = await Barangay.findAll({
+        include: [{
+          association: 'assignedBookkeepers',
+          attributes: ['id', 'display_name', 'email', 'status'],
+          through: { attributes: [] },
+          where: { role: ROLES.BARANGAY_BOOKKEEPER },
+          required: false,
+        }],
+        order: [['name', 'ASC']],
+      });
+      return res.json({ ok: true, scope: 'municipality', barangays });
+    }
+
+    const user = await User.findByPk(req.user.id, {
+      include: [{ association: 'assignedBarangays', attributes: ['id', 'name', 'seal_url'], through: { attributes: [] } }],
+    });
+    return res.json({ ok: true, scope: 'assigned', barangays: user?.assignedBarangays || [] });
+  } catch (error) {
+    console.error('listMyAssignedBarangays error', error);
     return res.status(500).json({ error: 'internal' });
   }
 }
@@ -142,7 +173,10 @@ async function listPendingUsers(req, res) {
 async function listUsers(req, res) {
   try {
     const users = await User.findAll({
-      include: [{ association: 'barangay', attributes: ['id', 'name'] }],
+      include: [
+        { association: 'barangay', attributes: ['id', 'name'] },
+        { association: 'assignedBarangays', attributes: ['id', 'name'], through: { attributes: [] } },
+      ],
       order: [['display_name', 'ASC']],
     });
     return res.json({
@@ -156,6 +190,7 @@ async function listUsers(req, res) {
         department: user.department,
         barangay_id: user.barangay_id,
         barangay_name: user.barangay ? user.barangay.name : null,
+        assigned_barangays: (user.assignedBarangays || []).map((barangay) => ({ id: barangay.id, name: barangay.name })),
       })),
     });
   } catch (error) {
@@ -169,10 +204,11 @@ async function updateManagedUser(req, res) {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ error: 'user_not_found' });
 
-    const { display_name, role, status, barangay_id, department } = req.body;
-    if (!VALID_ROLES.includes(role)) return res.status(400).json({ error: 'invalid_role' });
+    const { display_name, role, status, barangay_id, barangay_ids, department } = req.body;
+    const normalizedRole = typeof role === 'string' ? role.trim() : role;
+    if (!VALID_ROLES.includes(normalizedRole)) return res.status(400).json({ error: 'invalid_role' });
     if (!VALID_STATUSES.includes(status)) return res.status(400).json({ error: 'invalid_status' });
-    if (user.id === req.user.id && (role !== user.role || status !== user.status)) {
+    if (user.id === req.user.id && (normalizedRole !== user.role || status !== user.status)) {
       return res.status(400).json({ error: 'cannot_change_own_access', message: 'You cannot change your own role or account status.' });
     }
 
@@ -181,17 +217,47 @@ async function updateManagedUser(req, res) {
       return res.status(400).json({ error: 'invalid_barangay' });
     }
 
-    user.display_name = String(display_name || '').trim() || user.display_name;
-    user.role = role;
-    user.status = status;
-    user.barangay_id = barangayId;
-    user.department = String(department || '').trim() || null;
-    user.pending_role = status === 'pending' ? role : null;
-    await user.save();
+    const assignmentIds = Array.isArray(barangay_ids) ? [...new Set(barangay_ids.map(Number))] : [];
+    if (normalizedRole === ROLES.BARANGAY_BOOKKEEPER && assignmentIds.length > 5) {
+      return res.status(400).json({ error: 'bookkeeper_barangay_limit', message: 'A Barangay Bookkeeper can handle no more than five barangays.' });
+    }
+    if (normalizedRole !== ROLES.BARANGAY_BOOKKEEPER && assignmentIds.length) {
+      return res.status(400).json({ error: 'invalid_barangay_assignments' });
+    }
+    if (assignmentIds.some((id) => !Number.isInteger(id) || id < 1)) return res.status(400).json({ error: 'invalid_barangay' });
+    if (assignmentIds.length && (await Barangay.count({ where: { id: assignmentIds } })) !== assignmentIds.length) {
+      return res.status(400).json({ error: 'invalid_barangay' });
+    }
+    if (normalizedRole === ROLES.BARANGAY_BOOKKEEPER && !assignmentIds.length) {
+      return res.status(400).json({ error: 'barangay_required_for_role' });
+    }
+    const municipalityWideRoles = new Set([ROLES.MUNICIPAL_ACCOUNTANT, ROLES.SK_BOOKKEEPER]);
+    const primaryBarangayId = normalizedRole === ROLES.BARANGAY_BOOKKEEPER
+      ? assignmentIds[0]
+      : municipalityWideRoles.has(role)
+        ? null
+        : barangayId;
+
+    await sequelize.transaction(async (transaction) => {
+      await assertRoleCapacity({ role: normalizedRole, barangayId: primaryBarangayId, status, excludeUserId: user.id, transaction });
+      user.display_name = String(display_name || '').trim() || user.display_name;
+      user.role = normalizedRole;
+      user.status = status;
+      user.barangay_id = primaryBarangayId;
+      user.department = String(department || '').trim() || null;
+      user.pending_role = status === 'pending' ? normalizedRole : null;
+      await user.save({ transaction });
+      await UserBarangayAssignment.destroy({ where: { user_id: user.id }, transaction });
+      if (normalizedRole === ROLES.BARANGAY_BOOKKEEPER && assignmentIds.length) {
+        await UserBarangayAssignment.bulkCreate(assignmentIds.map((id) => ({ user_id: user.id, barangay_id: id })), { transaction });
+      }
+    });
 
     return res.json({ ok: true, user: { id: user.id, display_name: user.display_name, role: user.role, status: user.status, barangay_id: user.barangay_id } });
   } catch (error) {
     console.error('updateManagedUser error', error);
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message, details: error.details });
+    if (error.original?.sqlMessage === 'role_capacity_reached') return res.status(409).json({ error: 'role_capacity_reached' });
     return res.status(500).json({ error: 'internal' });
   }
 }
@@ -247,6 +313,7 @@ async function updateUserApproval(req, res, approved) {
     }
 
     if (approved) {
+      await assertRoleCapacity({ role: user.role, barangayId: user.barangay_id, status: 'active', excludeUserId: user.id });
       user.status = 'active';
       user.pending_role = null;
     } else {
@@ -266,6 +333,8 @@ async function updateUserApproval(req, res, approved) {
     });
   } catch (error) {
     console.error('updateUserApproval error', error);
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message, details: error.details });
+    if (error.original?.sqlMessage === 'role_capacity_reached') return res.status(409).json({ error: 'role_capacity_reached' });
     return res.status(500).json({ error: 'internal' });
   }
 }
@@ -280,6 +349,7 @@ async function rejectUserRegistration(req, res) {
 
 module.exports = {
   listBarangays,
+  listMyAssignedBarangays,
   createBarangay,
   updateBarangay,
   deleteBarangay,

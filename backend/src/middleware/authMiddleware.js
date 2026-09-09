@@ -36,8 +36,9 @@ module.exports = async function (req, res, next) {
     }
 
     if (!user) {
-      // create a local user mapping. Default to BarangayStaff until provisioned by admin.
-      user = await User.create({ firebase_uid: firebaseUid, email, display_name: displayName, role: 'BarangayStaff', status: 'pending' });
+      // Create an unapproved placeholder. The onboarding request supplies the
+      // actual role and barangay before it can receive access.
+      user = await User.create({ firebase_uid: firebaseUid, email, display_name: displayName, role: 'BarangayTreasurer', status: 'rejected' });
     }
 
     // Let the client read its own profile so it can display the pending/rejected

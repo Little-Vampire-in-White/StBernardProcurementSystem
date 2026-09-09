@@ -6,6 +6,7 @@ import { RoleType, useAuth } from "../context/AuthContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import NotificationDropdown from "../components/header/NotificationDropdown";
 import UserDropdown from "../components/header/UserDropdown";
+import { isRoleAllowed } from "../lib/roles";
 
 type SearchItem = { label: string; path: string; section: string; allowedRoles?: RoleType[] };
 
@@ -48,7 +49,7 @@ const AppHeader: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const searchResults = searchQuery.trim()
     ? searchItems.filter((item) =>
-        (!item.allowedRoles || (profile?.role && item.allowedRoles.includes(profile.role))) &&
+        isRoleAllowed(profile?.role, item.allowedRoles) &&
         `${item.label} ${item.section}`.toLowerCase().includes(searchQuery.trim().toLowerCase())
       )
     : [];

@@ -30,9 +30,10 @@ type ManagedUser = {
   department?: string | null;
   barangay_id: number | null;
   barangay_name: string | null;
+  assigned_barangays?: { id: number; name: string }[];
 };
 
-const userRoles = ['Administrator', 'FinanceManager', 'BarangayStaff', 'Auditor', 'BudgetOfficer', 'ProcurementOfficer', 'Requester', 'DepartmentHead', 'Guest'];
+const userRoles = ['MunicipalAccountant', 'BarangayTreasurer', 'SKTreasurer', 'SKChairman', 'BarangayBookkeeper', 'SKBookkeeper'];
 
 export default function UserProvisioning() {
   const apiFetch = useApi();
@@ -51,9 +52,10 @@ export default function UserProvisioning() {
   const [deletingBarangayId, setDeletingBarangayId] = useState<number | null>(null);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const [editUserName, setEditUserName] = useState('');
-  const [editUserRole, setEditUserRole] = useState('Requester');
+  const [editUserRole, setEditUserRole] = useState('BarangayTreasurer');
   const [editUserStatus, setEditUserStatus] = useState<ManagedUser['status']>('active');
   const [editUserBarangayId, setEditUserBarangayId] = useState('');
+  const [editUserBarangayIds, setEditUserBarangayIds] = useState<string[]>([]);
   const [editUserDepartment, setEditUserDepartment] = useState('');
   const [updatingUser, setUpdatingUser] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
@@ -190,9 +192,11 @@ export default function UserProvisioning() {
   const openEditUser = (user: ManagedUser) => {
     setEditingUser(user);
     setEditUserName(user.display_name || '');
-    setEditUserRole(user.role);
+    const selectedRole = userRoles.includes(user.role) ? user.role : 'BarangayTreasurer';
+    setEditUserRole(selectedRole);
     setEditUserStatus(user.status);
-    setEditUserBarangayId(user.barangay_id ? String(user.barangay_id) : '');
+    setEditUserBarangayId(['MunicipalAccountant', 'SKBookkeeper'].includes(selectedRole) ? '' : user.barangay_id ? String(user.barangay_id) : '');
+    setEditUserBarangayIds(selectedRole === 'BarangayBookkeeper' ? (user.assigned_barangays || []).map((barangay) => String(barangay.id)) : []);
     setEditUserDepartment(user.department || '');
   };
 
@@ -210,6 +214,7 @@ export default function UserProvisioning() {
           role: editUserRole,
           status: editUserStatus,
           barangay_id: editUserBarangayId ? Number(editUserBarangayId) : null,
+          barangay_ids: editUserRole === 'BarangayBookkeeper' ? editUserBarangayIds.map(Number) : [],
           department: editUserDepartment,
         }),
       });
@@ -392,7 +397,7 @@ export default function UserProvisioning() {
                     <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                       <td className="px-4 py-3"><p className="text-sm font-medium text-gray-900 dark:text-white">{user.display_name}</p><p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p></td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{user.role}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{user.barangay_name || 'Municipality-wide'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{user.role === 'BarangayBookkeeper' ? (user.assigned_barangays || []).map((barangay) => barangay.name).join(', ') || 'Not assigned' : user.barangay_name || 'Municipality-wide'}</td>
                       <td className="px-4 py-3 text-sm capitalize text-gray-600 dark:text-gray-300">{user.status}</td>
                       <td className="px-4 py-3"><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => openEditUser(user)}>Manage</Button><Button size="sm" className="bg-red-600 hover:bg-red-700" disabled={deletingUserId === user.id} onClick={() => handleDeleteUser(user)}>{deletingUserId === user.id ? 'Deleting...' : 'Delete'}</Button></div></td>
                     </tr>
@@ -439,8 +444,11 @@ export default function UserProvisioning() {
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{editingUser?.email}</p>
             <div className="mt-5 space-y-4">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name<input value={editUserName} onChange={(event) => setEditUserName(event.target.value)} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Role<select value={editUserRole} onChange={(event) => setEditUserRole(event.target.value)} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white">{userRoles.map((role) => <option key={role}>{role}</option>)}</select></label>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Barangay<select value={editUserBarangayId} onChange={(event) => setEditUserBarangayId(event.target.value)} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="">Municipality-wide</option>{barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.name}</option>)}</select></label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Role<select value={editUserRole} onChange={(event) => { const role = event.target.value; setEditUserRole(role); if (['MunicipalAccountant', 'SKBookkeeper'].includes(role)) { setEditUserBarangayId(''); setEditUserBarangayIds([]); } }} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white">{userRoles.map((role) => <option key={role} value={role}>{role}</option>)}</select></label>
+              {!['BarangayBookkeeper', 'MunicipalAccountant', 'SKBookkeeper'].includes(editUserRole) && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Barangay<select value={editUserBarangayId} onChange={(event) => setEditUserBarangayId(event.target.value)} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="">Select barangay</option>{barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.name}</option>)}</select></label>}
+              {editUserRole === 'MunicipalAccountant' && <p className="text-sm text-gray-500 dark:text-gray-400">Municipality-wide super administrator. No barangay is assigned.</p>}
+              {editUserRole === 'SKBookkeeper' && <p className="text-sm text-gray-500 dark:text-gray-400">Municipality-wide SK Bookkeeper. This role is reserved for SK budgeting and SK-related users across all barangays.</p>}
+              {editUserRole === 'BarangayBookkeeper' && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assigned barangays ({editUserBarangayIds.length}/5)<select multiple value={editUserBarangayIds} onChange={(event) => setEditUserBarangayIds(Array.from(event.currentTarget.selectedOptions, (option) => option.value).slice(0, 5))} className="mt-1 block h-36 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white">{barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.name}</option>)}</select><span className="mt-1 block text-xs font-normal text-gray-500">Select one to five barangays. Only six Barangay Bookkeepers can be active or pending.</span></label>}
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Department<input value={editUserDepartment} onChange={(event) => setEditUserDepartment(event.target.value)} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account status<select value={editUserStatus} onChange={(event) => setEditUserStatus(event.target.value as ManagedUser['status'])} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="active">Active</option><option value="pending">Pending</option><option value="rejected">Rejected (blocked)</option></select></label>
             </div>

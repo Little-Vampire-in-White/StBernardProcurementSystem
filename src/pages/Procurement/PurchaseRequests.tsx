@@ -3,6 +3,7 @@ import PageMeta from "../../components/common/PageMeta";
 import Button from "../../components/ui/button/Button";
 import { Modal } from "../../components/ui/modal";
 import { useAuth } from "../../context/AuthContext";
+import { isProjectAdmin } from "../../lib/roles";
 import { useApi } from "../../lib/api";
 import { downloadCsv } from "../../lib/download";
 import DocumentUploadModal from "../../components/procurement/DocumentUploadModal";
@@ -108,8 +109,8 @@ export default function PurchaseRequests() {
     }
   }
 
-  const canCreateRequest = ['Administrator', 'FinanceManager', 'BarangayStaff'].includes(profile?.role ?? 'Guest');
-  const canExportRequests = ['Administrator', 'BudgetOfficer'].includes(profile?.role ?? 'Guest');
+  const canCreateRequest = isProjectAdmin(profile?.role) || ['FinanceManager', 'BarangayStaff'].includes(profile?.role ?? 'Guest');
+  const canExportRequests = isProjectAdmin(profile?.role) || ['BudgetOfficer'].includes(profile?.role ?? 'Guest');
 
   return (
     <>
@@ -198,7 +199,7 @@ export default function PurchaseRequests() {
                       >
                         Documents
                       </button>
-                      {(profile?.role === "Administrator" || profile?.role === "FinanceManager") && (
+                      {(isProjectAdmin(profile?.role) || profile?.role === "FinanceManager") && (
                         <button
                           disabled={!request.compliant}
                           onClick={async () => {

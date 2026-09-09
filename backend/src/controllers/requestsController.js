@@ -8,6 +8,7 @@ async function notifyPurchaseRequestApprovers(request, requester) {
       status: 'active',
       [Op.or]: [
         { role: 'Administrator' },
+        { role: 'MunicipalAccountant' },
         { role: 'FinanceManager', barangay_id: request.barangay_id },
       ],
     },

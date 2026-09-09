@@ -27,6 +27,7 @@ import ApprovalInbox from "./pages/Procurement/ApprovalInbox";
 import BudgetMonitor from "./pages/Finance/BudgetMonitor";
 import Reports from "./pages/Analytics/Reports";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import BarangayManagement from "./pages/BarangayManagement";
 
 export default function App() {
   return (
@@ -44,6 +45,7 @@ export default function App() {
           >
             <Route index path="/" element={<Home />} />
             <Route path="/profile" element={<UserProfiles />} />
+            <Route path="/barangay-management" element={<ProtectedRoute allowedRoles={["BarangayBookkeeper"]}><BarangayManagement /></ProtectedRoute>} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/blank" element={<Blank />} />
             <Route path="/form-elements" element={<FormElements />} />

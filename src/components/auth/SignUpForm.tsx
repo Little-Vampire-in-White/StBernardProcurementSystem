@@ -19,7 +19,7 @@ export default function SignUpForm() {
   const [department, setDepartment] = useState("");
   const [barangayId, setBarangayId] = useState("");
   const [barangays, setBarangays] = useState<{ id: number; name: string }[]>([]);
-  const [role, setRole] = useState<RoleType>("BarangayStaff");
+  const [role, setRole] = useState<RoleType>("BarangayTreasurer");
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -42,9 +42,12 @@ export default function SignUpForm() {
   }, []);
 
   const roleOptions: { value: RoleType; label: string }[] = [
-    { value: "BarangayStaff", label: "Barangay Staff / Requester" },
-    { value: "FinanceManager", label: "Finance Manager" },
-    { value: "Auditor", label: "Auditor (Read-only)" },
+    { value: "BarangayTreasurer", label: "Barangay Treasurer" },
+    { value: "SKTreasurer", label: "Sangguniang Kabataan Treasurer" },
+    { value: "SKChairman", label: "Sangguniang Kabataan Chairman" },
+    { value: "BarangayBookkeeper", label: "Barangay Bookkeeper" },
+    { value: "SKBookkeeper", label: "Sangguniang Kabataan Bookkeeper" },
+    { value: "MunicipalAccountant", label: "Municipal Accountant" },
   ];
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -61,7 +64,7 @@ export default function SignUpForm() {
       return;
     }
 
-    if (['BarangayStaff', 'FinanceManager'].includes(role) && !barangayId) {
+    if (role !== 'MunicipalAccountant' && !barangayId) {
       setErrorMessage("Select the barangay for this role before continuing.");
       return;
     }
@@ -86,7 +89,7 @@ export default function SignUpForm() {
         department,
         barangayId,
       );
-      if (['BarangayStaff', 'FinanceManager'].includes(role)) {
+      if (role !== 'MunicipalAccountant') {
         navigate("/signin", { replace: true, state: { approvalNotice: 'Your account is pending administrator approval.' } });
       } else {
         navigate("/signin", { replace: true });
@@ -222,7 +225,7 @@ export default function SignUpForm() {
                     />
                   </div>
                 </div>
-                <div>
+                {role !== "MunicipalAccountant" && <div>
                   <Label>
                     Email<span className="text-error-500">*</span>
                   </Label>
@@ -232,7 +235,7 @@ export default function SignUpForm() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
                   />
-                </div>
+                </div>}
                 <div>
                   <Label>
                     Password<span className="text-error-500">*</span>

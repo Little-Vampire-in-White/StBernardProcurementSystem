@@ -13,6 +13,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const getDefaultDashboardPath = (role?: RoleType) => {
   switch (role) {
     case "Administrator":
+    case "MunicipalAccountant":
       return "/";
     case "BudgetOfficer":
       return "/finance/budget-monitor";

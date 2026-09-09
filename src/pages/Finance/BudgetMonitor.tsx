@@ -3,6 +3,7 @@ import PageMeta from "../../components/common/PageMeta";
 import Button from "../../components/ui/button/Button";
 import { Modal } from "../../components/ui/modal";
 import { useAuth } from "../../context/AuthContext";
+import { isProjectAdmin } from "../../lib/roles";
 import { useApi } from "../../lib/api";
 import { downloadCsv } from "../../lib/download";
 
@@ -113,7 +114,7 @@ export default function BudgetMonitor() {
     loadBudgetSummary();
   }, []);
 
-  const canExportBudget = ['Administrator', 'BudgetOfficer', 'FinanceManager'].includes(profile?.role ?? 'Guest');
+  const canExportBudget = isProjectAdmin(profile?.role) || ['BudgetOfficer', 'FinanceManager'].includes(profile?.role ?? 'Guest');
 
   return (
     <>
@@ -177,7 +178,7 @@ export default function BudgetMonitor() {
           ))}
         </div>
 
-        {profile?.role === 'Administrator' && (
+        {isProjectAdmin(profile?.role) && (
           <form onSubmit={saveBarangayBudget} className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Set Barangay Budget</h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Saving a budget again updates this barangay's current-year allocation.</p>

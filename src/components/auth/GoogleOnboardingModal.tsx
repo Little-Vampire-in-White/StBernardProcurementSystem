@@ -15,14 +15,17 @@ interface Props {
 }
 
 const roles: { value: RoleType; label: string }[] = [
-  { value: "BarangayStaff", label: "Barangay Staff / Requester" },
-  { value: "FinanceManager", label: "Finance Manager" },
-  { value: "Auditor", label: "Auditor (read-only)" },
+  { value: "BarangayTreasurer", label: "Barangay Treasurer" },
+  { value: "SKTreasurer", label: "Sangguniang Kabataan Treasurer" },
+  { value: "SKChairman", label: "Sangguniang Kabataan Chairman" },
+  { value: "BarangayBookkeeper", label: "Barangay Bookkeeper" },
+  { value: "SKBookkeeper", label: "Sangguniang Kabataan Bookkeeper" },
+  { value: "MunicipalAccountant", label: "Municipal Accountant" },
 ];
 
 export default function GoogleOnboardingModal({ account, onComplete, onCancel }: Props) {
   const [barangays, setBarangays] = useState<Barangay[]>([]);
-  const [role, setRole] = useState<RoleType>("BarangayStaff");
+  const [role, setRole] = useState<RoleType>("BarangayTreasurer");
   const [barangayId, setBarangayId] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,7 +39,7 @@ export default function GoogleOnboardingModal({ account, onComplete, onCancel }:
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!barangayId) {
+    if (role !== "MunicipalAccountant" && !barangayId) {
       setError("Please select your barangay.");
       return;
     }
@@ -55,10 +58,10 @@ export default function GoogleOnboardingModal({ account, onComplete, onCancel }:
       <form onSubmit={submit} className="my-auto w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl dark:bg-gray-900 sm:p-6">
         <div className="mb-6 flex items-center gap-3">
           <img className="h-12 w-12 rounded-full object-cover" src={account.photoUrl || "/images/user/owner.jpg"} alt="Google profile" />
-          <div>
+          {role !== "MunicipalAccountant" && <div>
             <h2 className="font-semibold text-gray-900 dark:text-white">Complete your profile</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">{account.email}</p>
-          </div>
+          </div>}
         </div>
         <p className="mb-5 text-sm text-gray-600 dark:text-gray-300">Choose your role and barangay. Your request will need administrator approval before access is granted.</p>
         <div className="space-y-4">

@@ -15,6 +15,7 @@ import {
 } from "../icons";
 import { useAuth, RoleType } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
+import { isRoleAllowed } from "../lib/roles";
 import SidebarWidget from "./SidebarWidget";
 
 type SubItem = {
@@ -43,6 +44,12 @@ const navItems: NavItem[] = [
     icon: <UserCircleIcon />,
     name: "User Profile",
     path: "/profile",
+  },
+  {
+    icon: <PageIcon />,
+    name: "Barangay Management",
+    path: "/barangay-management",
+    allowedRoles: ["BarangayBookkeeper"],
   },
   {
     icon: <PlugInIcon />,
@@ -206,7 +213,7 @@ const AppSidebar: React.FC = () => {
   };
 
   const canAccess = (item: NavItem | SubItem) => {
-    return !item.allowedRoles || (profile && item.allowedRoles.includes(profile.role));
+    return isRoleAllowed(profile?.role, item.allowedRoles);
   };
 
   const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
