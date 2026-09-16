@@ -2,25 +2,43 @@ const { ChatMessage, ChatReaction, Barangay, Notification, User, UserBarangayAss
 const { ROLES } = require('../constants/roles');
 
 const CHAT_ROLES = Object.values(ROLES);
-const senderInclude = { model: User, as: 'sender', attributes: ['id', 'display_name', 'email', 'role'], include: [
-    { model: Barangay, as: 'barangay', attributes: ['id', 'name'] },
+const ALLOWED_EMOJIS = ['👍', '❤️', '😊', '😂', '🎉', '😮', '😢', '🙏', '✅', '🔥'];
+
+const senderInclude = {
+  model: User,
+  as: 'sender',
+  attributes: ['id', 'display_name', 'email', 'role', 'profile_image_url'],
+  include: [
+    { model: Barangay, as: 'barangay', attributes: ['id', 'name', 'seal_url'] },
     { association: 'assignedBarangays', attributes: ['id', 'name'], through: { attributes: [] } },
-  ] };
+  ],
+};
+
 const messageInclude = [
   senderInclude,
-  { model: ChatMessage, as: 'replyTo', attributes: ['id', 'body', 'sender_id'], include: [{ model: User, as: 'sender', attributes: ['id', 'display_name', 'email'] }] },
-  { model: ChatReaction, as: 'reactions', attributes: ['id', 'user_id', 'emoji'] },
+  {
+    model: ChatMessage,
+    as: 'replyTo',
+    attributes: ['id', 'body', 'sender_id'],
+    include: [{ model: User, as: 'sender', attributes: ['id', 'display_name', 'email'] }],
+  },
+  {
+    model: ChatReaction,
+    as: 'reactions',
+    attributes: ['id', 'user_id', 'emoji'],
+    include: [{ model: User, as: 'user', attributes: ['id', 'display_name', 'email'] }],
+  },
 ];
 
 async function accessibleBarangays(user) {
-  if ([ROLES.ADMINISTRATOR, ROLES.MUNICIPAL_ACCOUNTANT, ROLES.SK_BOOKKEEPER].includes(user.role)) return Barangay.findAll({ attributes: ['id', 'name'], order: [['name', 'ASC']] });
+  if ([ROLES.ADMINISTRATOR, ROLES.MUNICIPAL_ACCOUNTANT, ROLES.SK_BOOKKEEPER].includes(user.role)) return Barangay.findAll({ attributes: ['id', 'name', 'seal_url'], order: [['name', 'ASC']] });
   if (user.role === ROLES.BARANGAY_BOOKKEEPER) {
     const bookkeeper = await User.findByPk(user.id, {
-      include: [{ association: 'assignedBarangays', attributes: ['id', 'name'], through: { attributes: [] } }],
+      include: [{ association: 'assignedBarangays', attributes: ['id', 'name', 'seal_url'], through: { attributes: [] } }],
     });
     return bookkeeper?.assignedBarangays || [];
   }
-  const barangay = user.barangay_id ? await Barangay.findByPk(user.barangay_id, { attributes: ['id', 'name'] }) : null;
+  const barangay = user.barangay_id ? await Barangay.findByPk(user.barangay_id, { attributes: ['id', 'name', 'seal_url'] }) : null;
   return barangay ? [barangay] : [];
 }
 
@@ -42,7 +60,10 @@ async function canAccessMessage(user, message) {
 function serializeMessages(messages, userId) {
   return messages.map((message) => {
     const data = message.toJSON ? message.toJSON() : message;
-    data.reactions = (data.reactions || []).map((reaction) => ({ ...reaction, is_mine: Number(reaction.user_id) === Number(userId) }));
+    data.reactions = (data.reactions || []).map((reaction) => ({
+      ...reaction,
+      is_mine: Number(reaction.user_id) === Number(userId),
+    }));
     return data;
   });
 }
@@ -86,7 +107,10 @@ async function createMessageNotifications(sender, room, body) {
 async function listRooms(req, res) {
   try {
     const barangays = await accessibleBarangays(req.user);
-    return res.json({ ok: true, rooms: [{ id: 'municipality', room_type: 'municipality', name: 'Municipality Chat', description: 'Municipality-wide discussion.' }, ...barangays.map((barangay) => ({ id: `barangay-${barangay.id}`, room_type: 'barangay', barangay_id: barangay.id, name: `Barangay ${barangay.name}`, description: 'Private barangay group chat.' }))] });
+    return res.json({ ok: true, rooms: [
+      { id: 'municipality', room_type: 'municipality', name: 'Municipality Chat', description: 'Municipality-wide discussion.' },
+      ...barangays.map((barangay) => ({ id: `barangay-${barangay.id}`, room_type: 'barangay', barangay_id: barangay.id, name: `Barangay ${barangay.name}`, description: 'Private barangay group chat.', seal_url: barangay.seal_url }))
+    ] });
   } catch (error) { console.error('listRooms error', error); return res.status(500).json({ error: 'internal' }); }
 }
 
@@ -124,16 +148,70 @@ async function toggleReaction(req, res) {
     const message = await ChatMessage.findByPk(req.params.messageId);
     const emoji = String(req.body.emoji || '').trim();
     if (!message) return res.status(404).json({ error: 'message_not_found' });
-    if (!['👍', '❤️', '✅'].includes(emoji)) return res.status(400).json({ error: 'invalid_reaction' });
+    if (!ALLOWED_EMOJIS.includes(emoji)) return res.status(400).json({ error: 'invalid_reaction' });
     if (!await canAccessMessage(req.user, message)) return res.status(403).json({ error: 'forbidden' });
     const existing = await ChatReaction.findOne({ where: { message_id: message.id, user_id: req.user.id, emoji } });
     if (existing) {
       await existing.destroy();
-      return res.json({ ok: true, reacted: false });
+    } else {
+      await ChatReaction.create({ message_id: message.id, user_id: req.user.id, emoji });
     }
-    await ChatReaction.create({ message_id: message.id, user_id: req.user.id, emoji });
-    return res.status(201).json({ ok: true, reacted: true });
+    const updatedReactions = await ChatReaction.findAll({
+      where: { message_id: message.id },
+      attributes: ['id', 'user_id', 'emoji'],
+      include: [{ model: User, as: 'user', attributes: ['id', 'display_name', 'email'] }],
+    });
+    return res.json({
+      ok: true,
+      reacted: !existing,
+      reactions: updatedReactions.map((r) => {
+        const item = r.toJSON ? r.toJSON() : r;
+        item.is_mine = Number(item.user_id) === Number(req.user.id);
+        return item;
+      }),
+    });
   } catch (error) { console.error('toggleReaction error', error); return res.status(500).json({ error: 'internal' }); }
 }
 
-module.exports = { CHAT_ROLES, listRooms, listMessages, sendMessage, toggleReaction };
+async function updateMessage(req, res) {
+  try {
+    const messageId = Number(req.params.messageId);
+    const body = String(req.body.body || '').trim();
+    if (!Number.isInteger(messageId) || messageId < 1) return res.status(400).json({ error: 'invalid_message' });
+    if (!body || body.length > 2000) return res.status(400).json({ error: 'message_body_required' });
+
+    const message = await ChatMessage.findByPk(messageId);
+    if (!message) return res.status(404).json({ error: 'message_not_found' });
+    if (!await canAccessMessage(req.user, message)) return res.status(403).json({ error: 'forbidden' });
+
+    const isOwner = Number(message.sender_id) === Number(req.user.id);
+    const canModerate = [ROLES.ADMINISTRATOR, ROLES.MUNICIPAL_ACCOUNTANT].includes(req.user.role);
+    if (!isOwner && !canModerate) return res.status(403).json({ error: 'forbidden' });
+
+    await message.update({ body });
+    const populated = await ChatMessage.findByPk(message.id, { include: messageInclude });
+    if (req.logAction) await req.logAction({ userId: req.user.id, action: 'EDIT_CHAT_MESSAGE', targetTable: 'chat_messages', targetId: message.id, details: {} });
+    return res.json({ ok: true, message: serializeMessages([populated], req.user.id)[0] });
+  } catch (error) { console.error('updateMessage error', error); return res.status(500).json({ error: 'internal' }); }
+}
+
+async function deleteMessage(req, res) {
+  try {
+    const messageId = Number(req.params.messageId);
+    if (!Number.isInteger(messageId) || messageId < 1) return res.status(400).json({ error: 'invalid_message' });
+    const message = await ChatMessage.findByPk(messageId);
+    if (!message) return res.status(404).json({ error: 'message_not_found' });
+    if (!await canAccessMessage(req.user, message)) return res.status(403).json({ error: 'forbidden' });
+
+    const isOwner = Number(message.sender_id) === Number(req.user.id);
+    const canModerate = [ROLES.ADMINISTRATOR, ROLES.MUNICIPAL_ACCOUNTANT].includes(req.user.role);
+    if (!isOwner && !canModerate) return res.status(403).json({ error: 'forbidden' });
+
+    await message.destroy();
+    if (req.logAction) await req.logAction({ userId: req.user.id, action: 'DELETE_CHAT_MESSAGE', targetTable: 'chat_messages', targetId: message.id, details: {} });
+    return res.json({ ok: true });
+  } catch (error) { console.error('deleteMessage error', error); return res.status(500).json({ error: 'internal' }); }
+}
+
+module.exports = { CHAT_ROLES, ALLOWED_EMOJIS, listRooms, listMessages, sendMessage, toggleReaction, updateMessage, deleteMessage };
+

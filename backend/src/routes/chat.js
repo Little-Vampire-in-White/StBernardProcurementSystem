@@ -1,9 +1,11 @@
 const express = require('express');
 const requireRoles = require('../middleware/roleMiddleware');
-const { CHAT_ROLES, listRooms, listMessages, sendMessage, toggleReaction } = require('../controllers/chatController');
+const { CHAT_ROLES, listRooms, listMessages, sendMessage, toggleReaction, updateMessage, deleteMessage } = require('../controllers/chatController');
 const router = express.Router();
 router.get('/rooms', requireRoles(CHAT_ROLES), listRooms);
 router.get('/rooms/:roomType/:barangayId?', requireRoles(CHAT_ROLES), listMessages);
 router.post('/messages', requireRoles(CHAT_ROLES), sendMessage);
 router.post('/messages/:messageId/reactions', requireRoles(CHAT_ROLES), toggleReaction);
+router.put('/messages/:messageId', requireRoles(CHAT_ROLES), updateMessage);
+router.delete('/messages/:messageId', requireRoles(CHAT_ROLES), deleteMessage);
 module.exports = router;

@@ -127,7 +127,7 @@ const othersItems: NavItem[] = [
     icon: <ChatIcon />,
     name: "Messages",
     path: "/messages",
-    allowedRoles: ["BarangayTreasurer", "BarangayBookkeeper", "SKTreasurer", "SKChairman", "SKBookkeeper"],
+    allowedRoles: ["Administrator", "MunicipalAccountant", "BudgetOfficer", "FinanceManager", "ProcurementOfficer", "DepartmentHead", "Auditor", "BarangayStaff", "BarangayTreasurer", "BarangayBookkeeper", "SKTreasurer", "SKChairman", "SKBookkeeper"],
   },
 ];
 

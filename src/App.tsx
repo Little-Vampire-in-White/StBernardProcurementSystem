@@ -48,7 +48,7 @@ export default function App() {
           >
             <Route index path="/" element={<Home />} />
             <Route path="/profile" element={<UserProfiles />} />
-            <Route path="/messages" element={<ProtectedRoute allowedRoles={["BarangayTreasurer", "BarangayBookkeeper", "SKTreasurer", "SKChairman", "SKBookkeeper"]}><Chat /></ProtectedRoute>} />
+            <Route path="/messages" element={<ProtectedRoute allowedRoles={["Administrator", "MunicipalAccountant", "BudgetOfficer", "FinanceManager", "ProcurementOfficer", "DepartmentHead", "Auditor", "BarangayStaff", "BarangayTreasurer", "BarangayBookkeeper", "SKTreasurer", "SKChairman", "SKBookkeeper"]}><Chat /></ProtectedRoute>} />
             <Route path="/barangay-management" element={<ProtectedRoute allowedRoles={["BarangayBookkeeper"]}><BarangayManagement /></ProtectedRoute>} />
             <Route path="/barangay-management/:barangayId/dashboard" element={<ProtectedRoute allowedRoles={["BarangayBookkeeper"]}><BarangayDashboard /></ProtectedRoute>} />
             <Route path="/sk-management" element={<ProtectedRoute allowedRoles={["SKTreasurer", "SKChairman", "SKBookkeeper"]}><SKManagement /></ProtectedRoute>} />
