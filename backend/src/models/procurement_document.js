@@ -4,7 +4,7 @@ module.exports = (sequelize) => {
   return sequelize.define('ProcurementDocument', {
     id: { type: DataTypes.BIGINT.UNSIGNED, primaryKey: true, autoIncrement: true },
     request_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false },
-    doc_type: { type: DataTypes.ENUM('PR','Canvass','BAC_Resolution','PO','AIR','OR','Invoice','DeliveryReceipt','Checklist','Certification','BudgetAllocation','Other'), allowNull: false },
+    doc_type: { type: DataTypes.STRING(255), allowNull: false },
     is_uploaded: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     file_path: { type: DataTypes.STRING(1024) },
     uploaded_by: { type: DataTypes.BIGINT.UNSIGNED },

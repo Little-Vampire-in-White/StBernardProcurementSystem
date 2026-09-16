@@ -11,6 +11,7 @@
     "dev": "nodemon --watch src --exec node src/app.js",
     "migrate:audit-user-delete": "node scripts/migrate-audit-user-delete.js",
     "migrate:municipal-roles": "node scripts/run-role-migration.js",
+    "migrate:procurement-checklists": "node scripts/migrate-procurement-checklists.js",
     "db:identify": "node scripts/identify-database.js"
   },
   "dependencies": {

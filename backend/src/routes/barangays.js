@@ -4,6 +4,8 @@ const router = express.Router();
 const {
   listBarangays,
   listMyAssignedBarangays,
+  getBarangayManagementDetails,
+  getBarangayDashboard,
   createBarangay,
   updateBarangay,
   deleteBarangay,
@@ -20,6 +22,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 router.get('/', listBarangays);
 router.get('/my-assignments', listMyAssignedBarangays);
+router.get('/:id/management-details', requireRoles(['Administrator', 'BarangayBookkeeper']), getBarangayManagementDetails);
+router.get('/:id/dashboard', requireRoles(['Administrator', 'BarangayBookkeeper']), getBarangayDashboard);
 router.get('/pending-users', requireRoles(['Administrator']), listPendingUsers);
 router.get('/users', requireRoles(['Administrator']), listUsers);
 router.post('/', requireRoles(['Administrator']), upload.single('seal'), createBarangay);

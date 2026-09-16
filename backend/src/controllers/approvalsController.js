@@ -1,4 +1,5 @@
 const { Approval, ProcurementDocument, ProcurementRequest, sequelize } = require('../models');
+const { getChecklistTemplate } = require('../services/checklistTemplates');
 
 async function processApproval(req, res) {
   // expects: request_id, action = 'approve'|'reject', remark
@@ -16,8 +17,12 @@ async function processApproval(req, res) {
     }
 
     if (action === 'approve') {
-      const uploadedCount = await ProcurementDocument.count({ where: { request_id, is_uploaded: true } });
-      if (uploadedCount < 12) return res.status(400).json({ error: '12-document compliance not satisfied', uploadedCount });
+      const documents = await ProcurementDocument.findAll({ where: { request_id, is_uploaded: true }, attributes: ['doc_type'] });
+      const uploadedTypes = new Set(documents.map((document) => document.doc_type));
+      const requirements = getChecklistTemplate(request.contract_type).requirements;
+      if (!requirements.every((requirement) => uploadedTypes.has(requirement))) {
+        return res.status(400).json({ error: 'checklist_incomplete', requiredCount: requirements.length });
+      }
     }
 
     const approvalAction = action === 'approve' ? 'Approved' : 'Rejected';

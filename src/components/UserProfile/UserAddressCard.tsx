@@ -6,14 +6,12 @@ import Label from "../form/Label";
 
 type UserAddressCardProps = {
   barangay: string;
-  department: string;
   role: string;
   accountStatus: "active" | "pending" | "rejected";
 };
 
 export default function UserAddressCard({
   barangay,
-  department,
   role,
   accountStatus,
 }: UserAddressCardProps) {
@@ -34,11 +32,6 @@ export default function UserAddressCard({
               <div>
                 <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Barangay</p>
                 <p className="text-sm font-medium text-gray-800 dark:text-white/90">{barangay}</p>
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Department / Office</p>
-                <p className="text-sm font-medium text-gray-800 dark:text-white/90">{department}</p>
               </div>
 
               <div>

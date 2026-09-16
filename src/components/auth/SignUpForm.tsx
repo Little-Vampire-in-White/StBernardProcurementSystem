@@ -16,7 +16,6 @@ export default function SignUpForm() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [department, setDepartment] = useState("");
   const [barangayId, setBarangayId] = useState("");
   const [barangays, setBarangays] = useState<{ id: number; name: string }[]>([]);
   const [role, setRole] = useState<RoleType>("BarangayTreasurer");
@@ -86,7 +85,6 @@ export default function SignUpForm() {
         password,
         `${firstName} ${lastName}`,
         role,
-        department,
         barangayId,
       );
       if (role !== 'MunicipalAccountant') {
@@ -258,15 +256,6 @@ export default function SignUpForm() {
                       )}
                     </span>
                   </div>
-                </div>
-                <div>
-                  <Label>Department / Office</Label>
-                  <Input
-                    type="text"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="e.g. Health, Public Works"
-                  />
                 </div>
                 <div>
                   <Label>Barangay</Label>

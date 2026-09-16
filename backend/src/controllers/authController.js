@@ -25,7 +25,6 @@ async function getCurrentUserProfile(req, res) {
       email: user.email,
       display_name: user.display_name,
       role: user.role,
-      department: user.department,
       barangay_id: user.barangay_id,
       barangay_name: user.barangay ? user.barangay.name : null,
       barangay_seal_url: user.barangay ? user.barangay.seal_url : null,
@@ -63,7 +62,7 @@ async function registerUserProfile(req, res) {
     return res.status(401).json({ error: 'unauthenticated' });
   }
 
-  const { display_name, role, department, barangay_id, profile_image_url } = req.body;
+  const { display_name, role, barangay_id, profile_image_url } = req.body;
   const firebaseUid = req.user.firebase_uid;
   const email = req.user.email;
 
@@ -96,7 +95,6 @@ async function registerUserProfile(req, res) {
           email: user.email,
           display_name: user.display_name,
           role: user.role,
-          department: user.department,
           barangay_id: user.barangay_id,
           status: user.status,
         },
@@ -120,9 +118,6 @@ async function registerUserProfile(req, res) {
     if (barangay_id !== undefined) {
       user.barangay_id = [ROLES.MUNICIPAL_ACCOUNTANT, ROLES.SK_BOOKKEEPER].includes(normalizedRole) ? null : barangay_id || null;
     }
-    if (department !== undefined) {
-      user.department = department || null;
-    }
     if (profile_image_url !== undefined) {
       user.profile_image_url = profile_image_url || null;
     }
@@ -145,7 +140,6 @@ async function registerUserProfile(req, res) {
       display_name: display_name || email,
       role: normalizedRole,
       barangay_id: [ROLES.MUNICIPAL_ACCOUNTANT, ROLES.SK_BOOKKEEPER].includes(normalizedRole) ? null : barangay_id || null,
-      department: department || null,
       profile_image_url: profile_image_url || null,
       status: requiresApproval ? 'pending' : 'active',
       pending_role: requiresApproval ? normalizedRole : null,
@@ -160,7 +154,6 @@ async function registerUserProfile(req, res) {
       email: user.email,
       display_name: user.display_name,
       role: user.role,
-      department: user.department,
       barangay_id: user.barangay_id,
       status: user.status,
     },

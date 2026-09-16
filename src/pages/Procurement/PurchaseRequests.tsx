@@ -18,7 +18,9 @@ export default function PurchaseRequests() {
   const [newTitle, setNewTitle] = useState("");
   const [newAmount, setNewAmount] = useState("");
   const [newDescription, setNewDescription] = useState("");
-  const [newBarangayId, setNewBarangayId] = useState("");
+  const [newContractType, setNewContractType] = useState("supplies_contract");
+  const [contractTypePickerOpen, setContractTypePickerOpen] = useState(false);
+  const [checklistTemplates, setChecklistTemplates] = useState<Record<string, { label: string; requirements: string[] }>>({});
   const [createError, setCreateError] = useState<string | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
@@ -41,6 +43,9 @@ export default function PurchaseRequests() {
             documentCount: req.documentCount || 0,
             uploadedCount: req.uploadedCount || 0,
             compliant: !!req.compliant,
+            contractType: req.contract_type || 'supplies_contract',
+            checklistLabel: req.checklist_label || 'Procurement checklist',
+            requiredCount: req.requiredCount || 0,
           }))
         );
       }
@@ -51,6 +56,15 @@ export default function PurchaseRequests() {
 
   useEffect(() => {
     loadRequests();
+    apiFetch('/api/requests/checklist-templates')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.templates) {
+          setChecklistTemplates(data.templates);
+          setNewContractType(data.defaultTemplate || 'supplies_contract');
+        }
+      })
+      .catch(console.warn);
   }, []);
 
   async function createRequest(){
@@ -65,7 +79,7 @@ export default function PurchaseRequests() {
         title: newTitle,
         description: newDescription,
         amount: Number(newAmount),
-        barangay_id: newBarangayId ? Number(newBarangayId) : null,
+        contract_type: newContractType,
       };
       const res = await apiFetch('/api/requests', {
         method: 'POST',
@@ -81,7 +95,8 @@ export default function PurchaseRequests() {
       setNewTitle('');
       setNewAmount('');
       setNewDescription('');
-      setNewBarangayId('');
+      setNewContractType('supplies_contract');
+      setContractTypePickerOpen(false);
       await loadRequests();
     } catch (err:any) {
       setCreateError(err?.message || 'Unable to create request.');
@@ -109,7 +124,7 @@ export default function PurchaseRequests() {
     }
   }
 
-  const canCreateRequest = isProjectAdmin(profile?.role) || ['FinanceManager', 'BarangayStaff'].includes(profile?.role ?? 'Guest');
+  const canCreateRequest = isProjectAdmin(profile?.role) || ['FinanceManager', 'BarangayStaff', 'BarangayTreasurer'].includes(profile?.role ?? 'Guest');
   const canExportRequests = isProjectAdmin(profile?.role) || ['BudgetOfficer'].includes(profile?.role ?? 'Guest');
 
   return (
@@ -183,7 +198,7 @@ export default function PurchaseRequests() {
                     {request.total}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {request.uploadedCount}/12
+                    {request.uploadedCount}/{request.requiredCount}
                   </td>
                   <td className="px-6 py-4 text-sm text-brand-600 dark:text-brand-400">
                     {request.status}
@@ -197,7 +212,7 @@ export default function PurchaseRequests() {
                         }}
                         className="text-blue-600"
                       >
-                        Documents
+                        Checklist
                       </button>
                       {(isProjectAdmin(profile?.role) || profile?.role === "FinanceManager") && (
                         <button
@@ -218,7 +233,7 @@ export default function PurchaseRequests() {
                           }}
                           className={`px-3 py-1 rounded ${request.compliant ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500 cursor-not-allowed"}`}
                         >
-                          Approve ({request.uploadedCount}/12)
+                          Approve ({request.uploadedCount}/{request.requiredCount})
                         </button>
                       )}
                     </div>
@@ -229,8 +244,8 @@ export default function PurchaseRequests() {
           </table>
         </div>
       </div>
-      <DocumentUploadModal requestId={selectedRequest} open={modalOpen} onClose={() => { setModalOpen(false); loadRequests(); }} onUploaded={() => loadRequests()} />
-      <Modal isOpen={createOpen} onClose={()=>setCreateOpen(false)} title="Create Purchase Request">
+      <DocumentUploadModal requestId={selectedRequest} contractType={requests.find((request) => request.id === selectedRequest)?.contractType} checklistLabel={requests.find((request) => request.id === selectedRequest)?.checklistLabel} open={modalOpen} onClose={() => { setModalOpen(false); loadRequests(); }} onUploaded={() => loadRequests()} />
+      <Modal isOpen={createOpen} onClose={()=>setCreateOpen(false)} title="Create Purchase Request" className="mx-4 max-w-lg">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Title</label>
@@ -241,8 +256,36 @@ export default function PurchaseRequests() {
             <input value={newAmount} onChange={(e)=>setNewAmount(e.target.value)} type="number" step="0.01" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Barangay ID</label>
-            <input value={newBarangayId} onChange={(e)=>setNewBarangayId(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+            <label className="block text-sm font-medium text-gray-700">Contract checklist</label>
+            <div className="relative mt-1">
+              <button
+                type="button"
+                aria-expanded={contractTypePickerOpen}
+                onClick={() => setContractTypePickerOpen((open) => !open)}
+                className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm text-gray-900 shadow-sm"
+              >
+                <span className="truncate">{checklistTemplates[newContractType]?.label || 'Select contract checklist'}</span>
+                <span className="ml-3 text-gray-500">⌄</span>
+              </button>
+              {contractTypePickerOpen && (
+                <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+                  {Object.entries(checklistTemplates).map(([key, template]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        setNewContractType(key);
+                        setContractTypePickerOpen(false);
+                      }}
+                      className={`block w-full px-3 py-2 text-left text-sm hover:bg-brand-50 ${key === newContractType ? 'bg-brand-50 text-brand-700' : 'text-gray-700'}`}
+                    >
+                      {template.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {checklistTemplates[newContractType] && <p className="mt-1 text-xs text-gray-500">{checklistTemplates[newContractType].requirements.length} required documents will be tracked.</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Description</label>

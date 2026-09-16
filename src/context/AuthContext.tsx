@@ -39,7 +39,6 @@ export interface UserProfile {
   email: string | null;
   displayName?: string | null;
   role: RoleType;
-  department?: string;
   barangayId?: number | null;
   barangayName?: string | null;
   barangaySealUrl?: string | null;
@@ -72,7 +71,6 @@ interface AuthContextType {
     password: string,
     displayName: string,
     role: RoleType,
-    department?: string,
     barangayId?: number | string,
   ) => Promise<void>;
   signOutUser: () => Promise<void>;
@@ -128,7 +126,6 @@ const fetchBackendUserProfile = async (token: string): Promise<UserProfile | nul
       email: data.profile.email || null,
       displayName: data.profile.display_name || null,
       role: data.profile.role as RoleType,
-      department: data.profile.department || undefined,
       barangayId: data.profile.barangay_id ?? null,
       barangayName: data.profile.barangay_name || null,
       barangaySealUrl: data.profile.barangay_seal_url || null,
@@ -148,7 +145,6 @@ const createBackendUserProfile = async (
   token: string,
   displayName: string,
   role: RoleType,
-  department?: string,
   barangayId?: number | string,
   profileImageUrl?: string | null,
 ) => {
@@ -162,7 +158,7 @@ const createBackendUserProfile = async (
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ display_name: displayName, role, department, barangay_id: barangayId ? Number(barangayId) : null, profile_image_url: profileImageUrl || null }),
+    body: JSON.stringify({ display_name: displayName, role, barangay_id: barangayId ? Number(barangayId) : null, profile_image_url: profileImageUrl || null }),
   });
 
   if (!res.ok) {
@@ -327,7 +323,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       token,
       user.displayName || 'Google User',
       role,
-      undefined,
       barangayId,
       user.photoURL,
     );
@@ -360,7 +355,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     password: string,
     displayName: string,
     role: RoleType,
-    department?: string,
     barangayId?: number | string,
   ) => {
     setError(null);
@@ -368,7 +362,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const result = await createUserWithEmailAndPassword(auth, email, password);
       if (result.user) {
         const token = await result.user.getIdToken(true);
-        await createBackendUserProfile(token, displayName, role, department, barangayId);
+        await createBackendUserProfile(token, displayName, role, barangayId);
         await loadProfile(result.user);
       }
     } catch (err: any) {

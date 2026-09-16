@@ -33,7 +33,7 @@ function inferMainUse(title = '', description = '') {
 async function getBudgetSummary(req, res) {
   try {
     const fiscalYear = Number(req.query.fiscal_year) || new Date().getFullYear();
-    const isBarangayScopedUser = ['FinanceManager', 'BarangayStaff'].includes(req.user.role);
+    const isBarangayScopedUser = ['FinanceManager', 'BarangayStaff', 'BarangayTreasurer'].includes(req.user.role);
     const barangayId = Number(req.user.barangay_id || 0);
     if (isBarangayScopedUser && !barangayId) {
       return res.status(400).json({ error: 'user_barangay_required' });

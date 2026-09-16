@@ -31,13 +31,11 @@ export default function UserProfiles() {
             name={profile?.displayName || currentUser?.displayName || "User"}
             email={profile?.email || currentUser?.email || "N/A"}
             role={profile?.role || "BarangayStaff"}
-            department={profile?.department || "Not specified"}
             barangay={profile?.barangayName || "Not assigned"}
             status={profile?.status || "active"}
           />
           <UserAddressCard
             barangay={profile?.barangayName || "Not assigned"}
-            department={profile?.department || "Not specified"}
             role={profile?.role || "BarangayStaff"}
             accountStatus={profile?.status || "active"}
           />

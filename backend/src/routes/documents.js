@@ -4,9 +4,9 @@ const { upload, uploadDocument, listDocuments } = require('../controllers/docume
 const requireRoles = require('../middleware/roleMiddleware');
 
 // allowed: Administrator, FinanceManager, BarangayStaff (uploader)
-router.post('/upload', requireRoles(['Administrator','FinanceManager','BarangayStaff']), upload.single('file'), uploadDocument);
+router.post('/upload', requireRoles(['Administrator','FinanceManager','BarangayStaff','BarangayTreasurer']), upload.single('file'), uploadDocument);
 
 // list documents for a request (read access allowed to all authenticated roles incl. Auditor)
-router.get('/list/:requestId', requireRoles(['Administrator','FinanceManager','BarangayStaff','Auditor']), listDocuments);
+router.get('/list/:requestId', requireRoles(['Administrator','FinanceManager','BarangayStaff','BarangayTreasurer','Auditor']), listDocuments);
 
 module.exports = router;

@@ -28,6 +28,8 @@ import BudgetMonitor from "./pages/Finance/BudgetMonitor";
 import Reports from "./pages/Analytics/Reports";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BarangayManagement from "./pages/BarangayManagement";
+import BarangayDashboard from "./pages/BarangayDashboard";
+import SKManagement from "./pages/SKManagement";
 
 export default function App() {
   return (
@@ -46,6 +48,8 @@ export default function App() {
             <Route index path="/" element={<Home />} />
             <Route path="/profile" element={<UserProfiles />} />
             <Route path="/barangay-management" element={<ProtectedRoute allowedRoles={["BarangayBookkeeper"]}><BarangayManagement /></ProtectedRoute>} />
+            <Route path="/barangay-management/:barangayId/dashboard" element={<ProtectedRoute allowedRoles={["BarangayBookkeeper"]}><BarangayDashboard /></ProtectedRoute>} />
+            <Route path="/sk-management" element={<ProtectedRoute allowedRoles={["SKTreasurer", "SKChairman", "SKBookkeeper"]}><SKManagement /></ProtectedRoute>} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/blank" element={<Blank />} />
             <Route path="/form-elements" element={<FormElements />} />
@@ -97,6 +101,7 @@ export default function App() {
                   "Administrator",
                   "BudgetOfficer",
                   "FinanceManager",
+                  "BarangayTreasurer",
                 ]}>
                   <BudgetMonitor />
                 </ProtectedRoute>
@@ -109,6 +114,7 @@ export default function App() {
                   "Administrator",
                   "BudgetOfficer",
                   "FinanceManager",
+                  "BarangayTreasurer",
                   "Auditor",
                 ]}>
                   <Reports />

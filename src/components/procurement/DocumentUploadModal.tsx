@@ -7,12 +7,13 @@ const DOC_TYPES = [
   'PR','Canvass','BAC_Resolution','PO','AIR','OR','Invoice','DeliveryReceipt','Checklist','Certification','BudgetAllocation','Other'
 ];
 
-export default function DocumentUploadModal({ requestId, open, onClose, onUploaded }: { requestId: number | string | null, open: boolean, onClose: ()=>void, onUploaded?: ()=>void }){
+export default function DocumentUploadModal({ requestId, contractType, checklistLabel, open, onClose, onUploaded }: { requestId: number | string | null, contractType?: string, checklistLabel?: string, open: boolean, onClose: ()=>void, onUploaded?: ()=>void }){
   const [docType, setDocType] = useState(DOC_TYPES[0]);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [requirements, setRequirements] = useState<string[]>([]);
   const apiFetch = useApi();
 
   async function loadDocuments() {
@@ -30,6 +31,17 @@ export default function DocumentUploadModal({ requestId, open, onClose, onUpload
 
   useEffect(()=>{ if(!open){ setFile(null); setMessage(null); setDocType(DOC_TYPES[0]); } },[open]);
   useEffect(()=>{ if(open) loadDocuments(); },[open, requestId]);
+  useEffect(() => {
+    if (!open) return;
+    apiFetch('/api/requests/checklist-templates')
+      .then((res) => res.json())
+      .then((data) => {
+        const nextRequirements = data?.templates?.[contractType || data?.defaultTemplate]?.requirements || DOC_TYPES;
+        setRequirements(nextRequirements);
+        setDocType(nextRequirements[0] || DOC_TYPES[0]);
+      })
+      .catch(() => setRequirements(DOC_TYPES));
+  }, [open, contractType]);
 
   async function handleUpload(e: React.FormEvent){
     e.preventDefault();
@@ -55,12 +67,12 @@ export default function DocumentUploadModal({ requestId, open, onClose, onUpload
   }
 
   return (
-    <Modal isOpen={open} onClose={onClose} title={`Documents for ${requestId}`}>
+    <Modal isOpen={open} onClose={onClose} title={checklistLabel || `Documents for ${requestId}`}>
       <form onSubmit={handleUpload} className="space-y-4">
         <div>
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium">Uploaded documents</div>
-            <div className="text-sm text-gray-500">{documents.length}/12</div>
+            <div className="text-sm text-gray-500">{documents.filter((document) => requirements.includes(document.doc_type)).length}/{requirements.length}</div>
           </div>
           <div className="mt-2 max-h-40 overflow-auto border rounded-md p-2 bg-white">
             {documents.length === 0 && <div className="text-sm text-gray-500">No documents uploaded yet.</div>}
@@ -77,10 +89,17 @@ export default function DocumentUploadModal({ requestId, open, onClose, onUpload
             ))}
           </div>
         </div>
+        <div className="max-h-44 overflow-auto rounded-md border border-gray-200 p-3 text-sm">
+          <div className="mb-2 font-medium">Required checklist</div>
+          {requirements.map((requirement) => {
+            const uploaded = documents.some((document) => document.doc_type === requirement && document.is_uploaded);
+            return <div key={requirement} className={uploaded ? 'py-1 text-green-700' : 'py-1 text-gray-600'}>{uploaded ? '✓' : '○'} {requirement}</div>;
+          })}
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Document type</label>
           <select value={docType} onChange={e=>setDocType(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300">
-            {DOC_TYPES.map(dt=> <option key={dt} value={dt}>{dt}</option>)}
+            {requirements.map(dt=> <option key={dt} value={dt}>{dt}</option>)}
           </select>
         </div>
 

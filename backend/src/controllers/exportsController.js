@@ -42,7 +42,7 @@ function buildCsv(rows, columns) {
 
 async function exportRequests(req, res) {
   try {
-    const requestWhere = req.user?.role === 'FinanceManager' ? { barangay_id: req.user.barangay_id } : {};
+    const requestWhere = ['FinanceManager', 'BarangayTreasurer'].includes(req.user?.role) ? { barangay_id: req.user.barangay_id } : {};
     const requests = await ProcurementRequest.findAll({
       where: requestWhere,
       include: [
@@ -87,7 +87,7 @@ async function exportRequests(req, res) {
 
 async function exportBudgetSummary(req, res) {
   try {
-    const requestWhere = req.user?.role === 'FinanceManager' ? { barangay_id: req.user.barangay_id } : {};
+    const requestWhere = ['FinanceManager', 'BarangayTreasurer'].includes(req.user?.role) ? { barangay_id: req.user.barangay_id } : {};
     const requests = await ProcurementRequest.findAll({
       where: requestWhere,
       include: [{ model: User, as: 'creator' }],

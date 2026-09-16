@@ -116,7 +116,6 @@ export default function UserMetaCard({
       const displayName = `${firstName} ${lastName}`.trim();
       const body = {
         display_name: displayName,
-        department: profile?.department || null,
         role,
         barangay_id: profile?.barangayId ?? null,
       };

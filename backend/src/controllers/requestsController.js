@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { ProcurementRequest, ProcurementDocument, User, BarangayBudget, Notification } = require('../models');
 const { Op } = require('sequelize');
+const { checklistTemplates, defaultTemplate, getChecklistTemplate } = require('../services/checklistTemplates');
 
 async function notifyPurchaseRequestApprovers(request, requester) {
   const recipients = await User.findAll({
@@ -33,8 +34,8 @@ async function listRequests(req, res) {
 
     if (role === 'BarangayStaff') {
       where.created_by = userId;
-    } else if (role === 'FinanceManager') {
-      if (!req.user?.barangay_id) return res.status(400).json({ error: 'finance_manager_barangay_required' });
+    } else if (['FinanceManager', 'BarangayTreasurer'].includes(role)) {
+      if (!req.user?.barangay_id) return res.status(400).json({ error: 'user_barangay_required' });
       where.barangay_id = req.user.barangay_id;
     }
 
@@ -48,12 +49,16 @@ async function listRequests(req, res) {
     });
 
     const payload = requests.map((request) => {
-      const uploadedCount = request.documents?.filter((doc) => doc.is_uploaded).length || 0;
+      const template = getChecklistTemplate(request.contract_type);
+      const uploadedTypes = new Set((request.documents || []).filter((doc) => doc.is_uploaded).map((doc) => doc.doc_type));
+      const uploadedCount = template.requirements.filter((requirement) => uploadedTypes.has(requirement)).length;
       return {
         id: request.id,
         request_uuid: request.request_uuid,
         title: request.title,
         description: request.description,
+        contract_type: request.contract_type || defaultTemplate,
+        checklist_label: template.label,
         amount: request.amount,
         status: request.status,
         barangay_id: request.barangay_id,
@@ -62,7 +67,8 @@ async function listRequests(req, res) {
         updated_at: request.updated_at,
         documentCount: request.documents?.length || 0,
         uploadedCount,
-        compliant: uploadedCount >= 12,
+        requiredCount: template.requirements.length,
+        compliant: uploadedCount === template.requirements.length,
         creator: {
           id: request.creator?.id,
           display_name: request.creator?.display_name || request.creator?.email || "Unknown",
@@ -77,20 +83,25 @@ async function listRequests(req, res) {
   }
 }
 
+function listChecklistTemplates(req, res) {
+  return res.json({ ok: true, defaultTemplate, templates: checklistTemplates });
+}
+
 async function createRequest(req, res) {
   try {
-    const { title, description, amount, barangay_id } = req.body;
+    const { title, description, amount, barangay_id, contract_type } = req.body;
     const createdBy = req.user?.id;
     if (!createdBy) return res.status(401).json({ error: 'unauthenticated' });
     if (!title || !amount) return res.status(400).json({ error: 'title and amount are required' });
+    if (contract_type && !checklistTemplates[contract_type]) return res.status(400).json({ error: 'invalid_contract_type' });
 
     const requestUuid = crypto.randomUUID();
-    const isBarangayScopedUser = ['FinanceManager', 'BarangayStaff'].includes(req.user.role);
+    const isBarangayScopedUser = ['FinanceManager', 'BarangayStaff', 'BarangayTreasurer'].includes(req.user.role);
     const assignedBarangayId = isBarangayScopedUser ? req.user.barangay_id : barangay_id || req.user.barangay_id || null;
     if (isBarangayScopedUser && !assignedBarangayId) {
       return res.status(400).json({ error: 'user_barangay_required' });
     }
-    if (req.user.role === 'FinanceManager') {
+    if (['FinanceManager', 'BarangayTreasurer'].includes(req.user.role)) {
       const budget = await BarangayBudget.findOne({
         where: { barangay_id: assignedBarangayId, fiscal_year: new Date().getFullYear() },
       });
@@ -107,6 +118,7 @@ async function createRequest(req, res) {
       request_uuid: requestUuid,
       title,
       description: description || '',
+      contract_type: contract_type || defaultTemplate,
       amount,
       barangay_id: assignedBarangayId,
       created_by: createdBy,
@@ -146,7 +158,7 @@ async function getRequest(req, res) {
       include: [{ model: ProcurementDocument, as: 'documents' }],
     });
     if (!request) return res.status(404).json({ error: 'not_found' });
-    if (req.user?.role === 'FinanceManager' && Number(request.barangay_id) !== Number(req.user.barangay_id)) {
+    if (['FinanceManager', 'BarangayTreasurer'].includes(req.user?.role) && Number(request.barangay_id) !== Number(req.user.barangay_id)) {
       return res.status(403).json({ error: 'forbidden' });
     }
 
@@ -157,6 +169,8 @@ async function getRequest(req, res) {
         request_uuid: request.request_uuid,
         title: request.title,
         description: request.description,
+        contract_type: request.contract_type || defaultTemplate,
+        checklist_label: getChecklistTemplate(request.contract_type).label,
         amount: request.amount,
         status: request.status,
         barangay_id: request.barangay_id,
@@ -172,4 +186,4 @@ async function getRequest(req, res) {
   }
 }
 
-module.exports = { listRequests, getRequest, createRequest };
+module.exports = { listRequests, getRequest, createRequest, listChecklistTemplates };

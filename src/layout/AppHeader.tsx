@@ -16,8 +16,8 @@ const searchItems: SearchItem[] = [
   { label: "Purchase Requests", path: "/procurement/purchase-requests", section: "Procurement" },
   { label: "Approval Inbox", path: "/procurement/approval-inbox", section: "Procurement", allowedRoles: ["Administrator", "FinanceManager"] },
   { label: "Suppliers", path: "/procurement/suppliers", section: "Procurement", allowedRoles: ["Administrator", "BudgetOfficer", "ProcurementOfficer"] },
-  { label: "Budget Monitor", path: "/finance/budget-monitor", section: "Finance", allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager"] },
-  { label: "Analytics Reports", path: "/analytics/reports", section: "Finance", allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager", "Auditor"] },
+  { label: "Budget Monitor", path: "/finance/budget-monitor", section: "Finance", allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager", "BarangayTreasurer"] },
+  { label: "Analytics Reports", path: "/analytics/reports", section: "Finance", allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager", "BarangayTreasurer", "Auditor"] },
   { label: "User Provisioning", path: "/admin/user-provisioning", section: "Administration", allowedRoles: ["Administrator"] },
   { label: "Audit Logs", path: "/admin/audit-logs", section: "Administration", allowedRoles: ["Administrator", "Auditor"] },
 ];

@@ -11,7 +11,6 @@ type UserInfoCardProps = {
   name: string;
   email: string;
   role: string;
-  department: string;
   barangay: string;
   status: "active" | "pending" | "rejected";
 };
@@ -20,7 +19,6 @@ export default function UserInfoCard({
   name,
   email,
   role,
-  department,
   barangay,
   status,
 }: UserInfoCardProps) {
@@ -30,14 +28,12 @@ export default function UserInfoCard({
 
   const [firstName, setFirstName] = useState(() => String(name || '').split(' ')[0] || '');
   const [lastName, setLastName] = useState(() => (String(name || '').split(' ').slice(1).join(' ')) || '');
-  const [departmentState, setDepartmentState] = useState(department || '');
 
   const handleSave = async () => {
     try {
       const displayName = `${firstName} ${lastName}`.trim();
       const body = {
         display_name: displayName,
-        department: departmentState,
         role,
         barangay_id: profile?.barangayId ?? null,
       };
@@ -87,11 +83,6 @@ export default function UserInfoCard({
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Status</p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">{status}</p>
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Department / Office</p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">{department}</p>
             </div>
 
             <div>
@@ -157,11 +148,6 @@ export default function UserInfoCard({
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Email Address</Label>
                     <Input type="text" value={email} disabled />
-                  </div>
-
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>Department</Label>
-                    <Input type="text" value={departmentState} onChange={(e)=>setDepartmentState(e.target.value)} />
                   </div>
 
                   <div className="col-span-2">

@@ -27,7 +27,6 @@ type ManagedUser = {
   display_name: string;
   role: string;
   status: 'active' | 'pending' | 'rejected';
-  department?: string | null;
   barangay_id: number | null;
   barangay_name: string | null;
   assigned_barangays?: { id: number; name: string }[];
@@ -56,7 +55,6 @@ export default function UserProvisioning() {
   const [editUserStatus, setEditUserStatus] = useState<ManagedUser['status']>('active');
   const [editUserBarangayId, setEditUserBarangayId] = useState('');
   const [editUserBarangayIds, setEditUserBarangayIds] = useState<string[]>([]);
-  const [editUserDepartment, setEditUserDepartment] = useState('');
   const [updatingUser, setUpdatingUser] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
 
@@ -197,7 +195,6 @@ export default function UserProvisioning() {
     setEditUserStatus(user.status);
     setEditUserBarangayId(['MunicipalAccountant', 'SKBookkeeper'].includes(selectedRole) ? '' : user.barangay_id ? String(user.barangay_id) : '');
     setEditUserBarangayIds(selectedRole === 'BarangayBookkeeper' ? (user.assigned_barangays || []).map((barangay) => String(barangay.id)) : []);
-    setEditUserDepartment(user.department || '');
   };
 
   const handleUpdateUser = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -215,7 +212,6 @@ export default function UserProvisioning() {
           status: editUserStatus,
           barangay_id: editUserBarangayId ? Number(editUserBarangayId) : null,
           barangay_ids: editUserRole === 'BarangayBookkeeper' ? editUserBarangayIds.map(Number) : [],
-          department: editUserDepartment,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -386,7 +382,7 @@ export default function UserProvisioning() {
         <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
           <div className="p-6">
             <h2 className="mb-1 text-lg font-semibold text-gray-900 dark:text-white">User Management</h2>
-            <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">Update a user’s role, barangay assignment, department, or account status.</p>
+            <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">Update a user’s role, barangay assignment, or account status.</p>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
                 <thead className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400">
@@ -449,7 +445,6 @@ export default function UserProvisioning() {
               {editUserRole === 'MunicipalAccountant' && <p className="text-sm text-gray-500 dark:text-gray-400">Municipality-wide super administrator. No barangay is assigned.</p>}
               {editUserRole === 'SKBookkeeper' && <p className="text-sm text-gray-500 dark:text-gray-400">Municipality-wide SK Bookkeeper. This role is reserved for SK budgeting and SK-related users across all barangays.</p>}
               {editUserRole === 'BarangayBookkeeper' && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assigned barangays ({editUserBarangayIds.length}/5)<select multiple value={editUserBarangayIds} onChange={(event) => setEditUserBarangayIds(Array.from(event.currentTarget.selectedOptions, (option) => option.value).slice(0, 5))} className="mt-1 block h-36 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white">{barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.name}</option>)}</select><span className="mt-1 block text-xs font-normal text-gray-500">Select one to five barangays. Only six Barangay Bookkeepers can be active or pending.</span></label>}
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Department<input value={editUserDepartment} onChange={(event) => setEditUserDepartment(event.target.value)} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account status<select value={editUserStatus} onChange={(event) => setEditUserStatus(event.target.value as ManagedUser['status'])} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="active">Active</option><option value="pending">Pending</option><option value="rejected">Rejected (blocked)</option></select></label>
             </div>
             <div className="mt-6 flex justify-end gap-3"><Button size="sm" variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button><Button type="submit" size="sm" disabled={updatingUser}>{updatingUser ? 'Saving...' : 'Save user'}</Button></div>

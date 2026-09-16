@@ -52,6 +52,12 @@ const navItems: NavItem[] = [
     allowedRoles: ["BarangayBookkeeper"],
   },
   {
+    icon: <PageIcon />,
+    name: "Sangguniang Kabataan",
+    path: "/sk-management",
+    allowedRoles: ["SKTreasurer", "SKChairman", "SKBookkeeper"],
+  },
+  {
     icon: <PlugInIcon />,
     name: "Administration",
     allowedRoles: ["Administrator"],
@@ -80,6 +86,7 @@ const navItems: NavItem[] = [
           "Administrator",
           "FinanceManager",
           "BarangayStaff",
+          "BarangayTreasurer",
           "BudgetOfficer",
           "ProcurementOfficer",
           "Auditor",
@@ -100,17 +107,17 @@ const navItems: NavItem[] = [
   {
     icon: <PageIcon />,
     name: "Finance",
-    allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager"],
+    allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager", "BarangayTreasurer"],
     subItems: [
       {
         name: "Budget Monitor",
         path: "/finance/budget-monitor",
-        allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager"],
+        allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager", "BarangayTreasurer"],
       },
       {
         name: "Analytics Report",
         path: "/analytics/reports",
-        allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager", "Auditor"],
+        allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager", "BarangayTreasurer", "Auditor"],
       },
     ],
   },
