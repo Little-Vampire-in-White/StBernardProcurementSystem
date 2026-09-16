@@ -10,6 +10,8 @@ const Approval = require('./approval')(sequelize);
 const BarangayBudget = require('./barangay_budget')(sequelize);
 const Notification = require('./notification')(sequelize);
 const UserBarangayAssignment = require('./user_barangay_assignment')(sequelize);
+const ChatMessage = require('./chat_message')(sequelize);
+const ChatReaction = require('./chat_reaction')(sequelize);
 
 // associations
 ProcurementRequest.hasMany(ProcurementDocument, { foreignKey: 'request_id', as: 'documents' });
@@ -34,6 +36,16 @@ User.hasMany(ProcurementRequest, { foreignKey: 'created_by', as: 'requests' });
 ProcurementRequest.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 User.hasMany(Notification, { foreignKey: 'recipient_id', as: 'notifications' });
 Notification.belongsTo(User, { foreignKey: 'recipient_id', as: 'recipient' });
+User.hasMany(ChatMessage, { foreignKey: 'sender_id', as: 'chatMessages' });
+ChatMessage.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' });
+Barangay.hasMany(ChatMessage, { foreignKey: 'barangay_id', as: 'chatMessages' });
+ChatMessage.belongsTo(Barangay, { foreignKey: 'barangay_id', as: 'barangay' });
+ChatMessage.belongsTo(ChatMessage, { foreignKey: 'reply_to_id', as: 'replyTo' });
+ChatMessage.hasMany(ChatMessage, { foreignKey: 'reply_to_id', as: 'replies' });
+ChatMessage.hasMany(ChatReaction, { foreignKey: 'message_id', as: 'reactions' });
+ChatReaction.belongsTo(ChatMessage, { foreignKey: 'message_id', as: 'message' });
+User.hasMany(ChatReaction, { foreignKey: 'user_id', as: 'chatReactions' });
+ChatReaction.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 module.exports = {
   sequelize,
@@ -47,4 +59,6 @@ module.exports = {
   BarangayBudget,
   Notification,
   UserBarangayAssignment,
+  ChatMessage,
+  ChatReaction,
 };

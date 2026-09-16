@@ -30,6 +30,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BarangayManagement from "./pages/BarangayManagement";
 import BarangayDashboard from "./pages/BarangayDashboard";
 import SKManagement from "./pages/SKManagement";
+import Chat from "./pages/Chat";
 
 export default function App() {
   return (
@@ -47,6 +48,7 @@ export default function App() {
           >
             <Route index path="/" element={<Home />} />
             <Route path="/profile" element={<UserProfiles />} />
+            <Route path="/messages" element={<ProtectedRoute allowedRoles={["BarangayTreasurer", "BarangayBookkeeper", "SKTreasurer", "SKChairman", "SKBookkeeper"]}><Chat /></ProtectedRoute>} />
             <Route path="/barangay-management" element={<ProtectedRoute allowedRoles={["BarangayBookkeeper"]}><BarangayManagement /></ProtectedRoute>} />
             <Route path="/barangay-management/:barangayId/dashboard" element={<ProtectedRoute allowedRoles={["BarangayBookkeeper"]}><BarangayDashboard /></ProtectedRoute>} />
             <Route path="/sk-management" element={<ProtectedRoute allowedRoles={["SKTreasurer", "SKChairman", "SKBookkeeper"]}><SKManagement /></ProtectedRoute>} />

@@ -1,0 +1,9 @@
+const express = require('express');
+const requireRoles = require('../middleware/roleMiddleware');
+const { CHAT_ROLES, listRooms, listMessages, sendMessage, toggleReaction } = require('../controllers/chatController');
+const router = express.Router();
+router.get('/rooms', requireRoles(CHAT_ROLES), listRooms);
+router.get('/rooms/:roomType/:barangayId?', requireRoles(CHAT_ROLES), listMessages);
+router.post('/messages', requireRoles(CHAT_ROLES), sendMessage);
+router.post('/messages/:messageId/reactions', requireRoles(CHAT_ROLES), toggleReaction);
+module.exports = router;

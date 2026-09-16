@@ -26,6 +26,7 @@ app.use('/api/exports', require('./routes/exports'));
 app.use('/api/barangays', require('./routes/barangays'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/chat', require('./routes/chat'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 app.use('/api/dev', require('./routes/dev'));
 app.use('/api/requests', require('./routes/requests'));

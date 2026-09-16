@@ -12,6 +12,8 @@
     "migrate:audit-user-delete": "node scripts/migrate-audit-user-delete.js",
     "migrate:municipal-roles": "node scripts/run-role-migration.js",
     "migrate:procurement-checklists": "node scripts/migrate-procurement-checklists.js",
+    "migrate:chat-messages": "node scripts/migrate-chat-messages.js",
+    "migrate:chat-interactions": "node scripts/migrate-chat-interactions.js",
     "db:identify": "node scripts/identify-database.js"
   },
   "dependencies": {
