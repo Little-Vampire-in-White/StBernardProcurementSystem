@@ -23,6 +23,7 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import Suppliers from "./pages/Procurement/Suppliers";
 import PurchaseRequests from "./pages/Procurement/PurchaseRequests";
+import SKTransactions from "./pages/Procurement/SKTransactions";
 import ApprovalInbox from "./pages/Procurement/ApprovalInbox";
 import BudgetMonitor from "./pages/Finance/BudgetMonitor";
 import Reports from "./pages/Analytics/Reports";
@@ -69,6 +70,7 @@ export default function App() {
               path="/procurement/purchase-requests"
               element={<PurchaseRequests />}
             />
+            <Route path="/sk-transactions/:category" element={<ProtectedRoute allowedRoles={["MunicipalAccountant", "SKBookkeeper", "SKChairman", "SKTreasurer"]}><SKTransactions /></ProtectedRoute>} />
             <Route
               path="/procurement/approval-inbox"
               element={

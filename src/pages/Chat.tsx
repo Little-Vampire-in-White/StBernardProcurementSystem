@@ -100,6 +100,7 @@ export default function Chat() {
   const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [roomFilter, setRoomFilter] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -337,8 +338,8 @@ export default function Chat() {
       />
 
       <div className="mx-auto flex h-[calc(100vh-10rem)] max-w-7xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900/50">
-        {/* Left Sidebar: Rooms List */}
-        <aside className="flex w-80 shrink-0 flex-col border-r border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/40">
+        {/* Left Sidebar: Rooms List (desktop) */}
+        <aside className="hidden md:flex w-80 shrink-0 flex-col border-r border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/40">
           <div className="border-b border-gray-200 p-4 dark:border-gray-800">
             <div className="flex items-center justify-between">
               <h1 className="text-lg font-bold text-gray-900 dark:text-white">Messages</h1>
@@ -375,6 +376,7 @@ export default function Chat() {
                     setActiveRoom(room);
                     setReplyingTo(null);
                     setError(null);
+                    setSidebarOpen(false);
                   }}
                   className={`group relative flex w-full items-start gap-3 rounded-xl p-3 text-left transition-all ${
                     isActive
@@ -422,6 +424,16 @@ export default function Chat() {
           {/* Room Header */}
           <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 px-6 dark:border-gray-800">
             <div className="flex items-center gap-3">
+              {/* Mobile: sidebar toggle */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="md:hidden mr-2 rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+                aria-label="Open channels"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-lg dark:bg-brand-500/10">
                 {activeRoom?.room_type === 'municipality' ? (
                   <img src="/images/logo/cropped-LGU-Saint-Bernard-LOGO.png" alt="Municipality" className="h-8 w-8 object-contain" />
@@ -456,10 +468,10 @@ export default function Chat() {
           </header>
 
           {/* Messages Scroll Area */}
-          <div
-            ref={messagesContainerRef}
-            className="flex-1 space-y-4 overflow-y-auto p-6 scroll-smooth"
-          >
+            <div
+              ref={messagesContainerRef}
+              className="flex-1 space-y-4 overflow-y-auto p-4 md:p-6 scroll-smooth"
+            >
             {loading && (
               <div className="flex h-32 items-center justify-center">
                 <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -736,6 +748,57 @@ export default function Chat() {
             })}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Mobile sidebar drawer */}
+          {sidebarOpen && (
+            <div className="fixed inset-0 z-40 md:hidden">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
+              <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white p-3 shadow-lg dark:bg-gray-900">
+                <div className="flex items-center justify-between p-2">
+                  <h3 className="font-semibold">Channels</h3>
+                  <button onClick={() => setSidebarOpen(false)} className="rounded p-1">✕</button>
+                </div>
+                <div className="mt-2 overflow-y-auto">
+                  {filteredRooms.map((room) => {
+                    const isActive = activeRoom?.id === room.id;
+                    const isMunicipality = room.room_type === 'municipality';
+                    return (
+                      <button
+                        key={room.id}
+                        onClick={() => {
+                          setActiveRoom(room);
+                          setReplyingTo(null);
+                          setError(null);
+                          setSidebarOpen(false);
+                        }}
+                        className={`group relative flex w-full items-start gap-3 rounded-xl p-3 text-left transition-all ${
+                          isActive
+                            ? 'bg-brand-500 text-white shadow-xs'
+                            : 'text-gray-700 hover:bg-gray-200/60 dark:text-gray-300 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base font-bold shadow-xs">
+                          {isMunicipality ? (
+                            <img src="/images/logo/cropped-LGU-Saint-Bernard-LOGO.png" alt="Municipality" className="h-6 w-6 object-contain" />
+                          ) : room.seal_url ? (
+                            <img src={room.seal_url} alt={room.name} className="h-6 w-6 object-contain rounded" />
+                          ) : (
+                            '📍'
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="truncate text-sm font-semibold">{room.name}</span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-gray-500">{room.description}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </aside>
+            </div>
+          )}
 
           {/* Message Composer Form */}
           <footer className="border-t border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">

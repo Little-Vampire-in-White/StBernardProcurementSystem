@@ -34,7 +34,7 @@ async function listRequests(req, res) {
 
     if (role === 'BarangayStaff') {
       where.created_by = userId;
-    } else if (['FinanceManager', 'BarangayTreasurer'].includes(role)) {
+    } else if (['FinanceManager', 'BarangayTreasurer', 'SKBookkeeper', 'SKChairman', 'SKTreasurer'].includes(role)) {
       if (!req.user?.barangay_id) return res.status(400).json({ error: 'user_barangay_required' });
       where.barangay_id = req.user.barangay_id;
     }

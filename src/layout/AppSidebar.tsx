@@ -105,6 +105,37 @@ const navItems: NavItem[] = [
   },
   {
     icon: <PageIcon />,
+    name: "SK Transactions",
+    subItems: [
+      {
+        name: "Procurement",
+        path: "/sk-transactions/procurement",
+        allowedRoles: ["MunicipalAccountant", "SKBookkeeper", "SKChairman", "SKTreasurer"],
+      },
+      {
+        name: "Programs and/or Activities",
+        path: "/sk-transactions/programs-and-activities",
+        allowedRoles: ["MunicipalAccountant", "SKBookkeeper", "SKChairman", "SKTreasurer"],
+      },
+      {
+        name: "Projects",
+        path: "/sk-transactions/projects",
+        allowedRoles: ["MunicipalAccountant", "SKBookkeeper", "SKChairman", "SKTreasurer"],
+      },
+      {
+        name: "Honorarium",
+        path: "/sk-transactions/honorarium",
+        allowedRoles: ["MunicipalAccountant", "SKBookkeeper", "SKChairman", "SKTreasurer"],
+      },
+      {
+        name: "Travel",
+        path: "/sk-transactions/travel",
+        allowedRoles: ["MunicipalAccountant", "SKBookkeeper", "SKChairman", "SKTreasurer"],
+      },
+    ],
+  },
+  {
+    icon: <PageIcon />,
     name: "Finance",
     allowedRoles: ["Administrator", "BudgetOfficer", "FinanceManager", "BarangayTreasurer"],
     subItems: [
