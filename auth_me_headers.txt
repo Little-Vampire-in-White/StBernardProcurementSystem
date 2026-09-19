@@ -1,0 +1,13 @@
+HTTP/1.1 401 Unauthorized
+x-powered-by: Express
+access-control-allow-origin: https://stbernard-eprocurement.web.app
+vary: Origin
+access-control-allow-credentials: true
+content-type: application/json; charset=utf-8
+etag: W/"1b-RCkDNv1wa3UitMAdSM+QgID7d6A"
+x-cloud-trace-context: 12be9b54fd20097d303d8c2def77a340;o=1
+date: Sat, 19 Sep 2026 13:16:32 GMT
+server: Google Frontend
+Content-Length: 27
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+

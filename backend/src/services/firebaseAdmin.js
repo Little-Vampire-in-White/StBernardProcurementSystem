@@ -1,6 +1,8 @@
 const admin = require('firebase-admin');
 const path = require('path');
 
+const configuredProjectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
+
 // Accept credentials via either a base64-encoded JSON in env or a file path
 const credentialEnv = process.env.FIREBASE_ADMIN_SDK_JSON; // base64 or raw JSON
 const credentialPath = process.env.FIREBASE_ADMIN_SDK_PATH;
@@ -30,12 +32,15 @@ if (credentialEnv) {
 }
 
 if (serviceAccount && !admin.apps.length) {
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: configuredProjectId || serviceAccount.project_id,
+  });
   console.log('Firebase Admin initialized');
 } else if (!serviceAccount) {
   // Cloud Run supplies Application Default Credentials through its service account.
   // On a local machine, set FIREBASE_ADMIN_SDK_PATH or FIREBASE_ADMIN_SDK_JSON.
-  admin.initializeApp();
+  admin.initializeApp({ projectId: configuredProjectId });
   console.log('Firebase Admin initialized with application default credentials');
 }
 

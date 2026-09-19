@@ -1,0 +1,13 @@
+HTTP/1.1 204 No Content
+x-powered-by: Express
+access-control-allow-origin: https://stbernard-eprocurement.web.app
+vary: Origin
+access-control-allow-credentials: true
+access-control-allow-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+access-control-allow-headers: Content-Type,Authorization,X-Requested-With
+x-cloud-trace-context: 31c2eafcf01cba93356d30fd3e49f1f1;o=1
+date: Sat, 19 Sep 2026 13:16:18 GMT
+content-type: text/html
+server: Google Frontend
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+

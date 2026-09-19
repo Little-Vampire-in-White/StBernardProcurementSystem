@@ -16,6 +16,7 @@ import {
   User,
 } from "firebase/auth";
 import { auth } from "../firebase/config";
+import { resolveApiUrl } from "../lib/api";
 
 export type RoleType =
   | "Administrator"
@@ -75,7 +76,7 @@ interface AuthContextType {
   ) => Promise<void>;
   signOutUser: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  getIdToken: () => Promise<string | null>;
+  getIdToken: (forceRefresh?: boolean) => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -104,7 +105,7 @@ const getAccountAccessMessage = (code?: string) => {
 
 const fetchBackendUserProfile = async (token: string): Promise<UserProfile | null> => {
   try {
-    const res = await fetch('/api/auth/me', {
+    const res = await fetch(resolveApiUrl('/api/auth/me'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -152,7 +153,7 @@ const createBackendUserProfile = async (
     throw new Error('No Firebase ID token available for backend registration');
   }
 
-  const res = await fetch('/api/auth/register', {
+  const res = await fetch(resolveApiUrl('/api/auth/register'), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -189,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     const request = (async () => {
-      const token = await user.getIdToken();
+      const token = await user.getIdToken(true);
       const backendProfile = token ? await fetchBackendUserProfile(token) : null;
 
       if (!backendProfile || backendProfile.status !== "active") {
@@ -257,7 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setError(message);
       await signOut(auth);
       try {
-        await fetch('/api/auth/login-failed', {
+        await fetch(resolveApiUrl('/api/auth/login-failed'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, reason: errorInfo?.message || 'signin_error' }),
@@ -377,9 +378,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       // notify backend about logout (best-effort)
       try {
-        const token = currentUser ? await currentUser.getIdToken() : null;
+        const token = currentUser ? await currentUser.getIdToken(true) : null;
         if (token) {
-          await fetch('/api/auth/logout', {
+          await fetch(resolveApiUrl('/api/auth/logout'), {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -403,9 +404,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const getIdToken = async (): Promise<string | null> => {
+  const getIdToken = async (forceRefresh = false): Promise<string | null> => {
     if (!currentUser) return null;
-    return currentUser.getIdToken();
+    return currentUser.getIdToken(forceRefresh);
   };
 
   const value = useMemo(

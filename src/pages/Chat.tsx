@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import PageMeta from "../components/common/PageMeta";
 import { useAuth } from "../context/AuthContext";
-import { useApi } from "../lib/api";
+import { resolveAssetUrl, useApi } from "../lib/api";
 
 type ChatRoom = {
   id: string;
@@ -36,6 +36,14 @@ type ChatSender = {
   assignedBarangays?: Array<{ name: string }>;
 };
 
+type ChatAttachment = {
+  id: string;
+  name: string;
+  type: "image" | "file";
+  mime_type?: string;
+  url?: string | null;
+};
+
 type ChatMessage = {
   id: number;
   body: string;
@@ -50,6 +58,7 @@ type ChatMessage = {
     sender?: { display_name?: string | null; email?: string | null };
   } | null;
   reactions?: ChatReaction[];
+  attachments?: ChatAttachment[];
 };
 
 const REACTION_PALETTE = ["👍", "❤️", "😊", "😂", "🎉", "😮", "😢", "🙏", "✅", "🔥"];
@@ -101,6 +110,8 @@ export default function Chat() {
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [roomFilter, setRoomFilter] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -208,26 +219,61 @@ export default function Chat() {
     setReplyingTo(null);
   };
 
+  const uploadFileToChat = async (file: File): Promise<ChatAttachment | null> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await apiFetch('/api/chat/messages/upload', { method: 'POST', body: formData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to upload file.');
+      return data.attachment || null;
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Unable to upload file.');
+      return null;
+    }
+  };
+
+  const handleAttachmentSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    setUploadingAttachment(true);
+    const uploaded: ChatAttachment[] = [];
+
+    for (const file of files) {
+      const attachment = await uploadFileToChat(file);
+      if (attachment) uploaded.push(attachment);
+    }
+
+    setPendingAttachments((current) => [...current, ...uploaded]);
+    setUploadingAttachment(false);
+    event.target.value = "";
+  };
+
   const sendMessage = async (event?: FormEvent) => {
     if (event) event.preventDefault();
-    if (!activeRoom || !body.trim() || sending) return;
+    if (!activeRoom || sending) return;
+    const canSendText = Boolean(body.trim());
+    const canSendAttachment = pendingAttachments.length > 0;
+    if (!canSendText && !canSendAttachment) return;
+
     setSending(true);
     const pendingBody = body.trim();
     const pendingReplyTo = replyingTo;
 
     try {
       if (editingMessageId) {
-        // Edit existing message
         const response = await apiFetch(`/api/chat/messages/${editingMessageId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ body: pendingBody }),
+          body: JSON.stringify({ body: pendingBody || 'Shared attachment' }),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Unable to save edits.');
-        setMessages((current) => current.map((m) => (m.id === editingMessageId ? data.message : m)));
+        setMessages((current) => current.map((m) => (m.id === editingMessageId ? { ...m, ...data.message } : m)));
         setEditingMessageId(null);
         setBody('');
+        setPendingAttachments([]);
         setError(null);
         return;
       }
@@ -239,7 +285,8 @@ export default function Chat() {
           room_type: activeRoom.room_type,
           barangay_id: activeRoom.barangay_id,
           reply_to_id: pendingReplyTo?.id || null,
-          body: pendingBody,
+          body: pendingBody || (canSendAttachment ? 'Shared attachment' : ''),
+          attachments: pendingAttachments,
         }),
       });
       const data = await response.json();
@@ -248,6 +295,7 @@ export default function Chat() {
       setMessages((current) => [...current, data.message]);
       setBody('');
       setReplyingTo(null);
+      setPendingAttachments([]);
       setError(null);
       setTimeout(() => scrollToBottom(true), 50);
     } catch (sendError) {
@@ -396,7 +444,7 @@ export default function Chat() {
                     {isMunicipality ? (
                       <img src="/images/logo/cropped-LGU-Saint-Bernard-LOGO.png" alt="Municipality" className="h-6 w-6 object-contain" />
                     ) : room.seal_url ? (
-                      <img src={room.seal_url} alt={room.name} className="h-6 w-6 object-contain rounded" />
+                      <img src={resolveAssetUrl(room.seal_url)} alt={room.name} className="h-6 w-6 object-contain rounded" />
                     ) : (
                       "📍"
                     )}
@@ -438,7 +486,7 @@ export default function Chat() {
                 {activeRoom?.room_type === 'municipality' ? (
                   <img src="/images/logo/cropped-LGU-Saint-Bernard-LOGO.png" alt="Municipality" className="h-8 w-8 object-contain" />
                 ) : activeRoom?.seal_url ? (
-                  <img src={activeRoom.seal_url} alt={activeRoom.name} className="h-8 w-8 object-contain rounded" />
+                  <img src={resolveAssetUrl(activeRoom.seal_url)} alt={activeRoom.name} className="h-8 w-8 object-contain rounded" />
                 ) : (
                   '📍'
                 )}
@@ -537,9 +585,9 @@ export default function Chat() {
                   {!isOwn && (
                     <div title={senderName} className="shrink-0 select-none">
                       {message.sender?.profile_image_url ? (
-                        <img src={message.sender.profile_image_url} alt={senderName} className="h-9 w-9 rounded-full object-cover" />
+                        <img src={resolveAssetUrl(message.sender.profile_image_url)} alt={senderName} className="h-9 w-9 rounded-full object-cover" />
                       ) : message.sender?.barangay?.seal_url ? (
-                        <img src={message.sender.barangay.seal_url} alt={senderName} className="h-9 w-9 rounded-full object-cover" />
+                        <img src={resolveAssetUrl(message.sender.barangay.seal_url)} alt={senderName} className="h-9 w-9 rounded-full object-cover" />
                       ) : (
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white shadow-xs">
                           {initials}
@@ -692,6 +740,33 @@ export default function Chat() {
 
                         {/* Main Message Body */}
                         <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.body}</p>
+                        {Array.isArray(message.attachments) && message.attachments.length > 0 && (
+                          <div className="mt-3 grid gap-2">
+                            {message.attachments.map((attachment) => {
+                              const isImage = attachment.type === 'image' || (attachment.mime_type || '').startsWith('image/');
+                              const attachmentUrl = attachment.url || '';
+
+                              if (!attachmentUrl) {
+                                return null;
+                              }
+
+                              return (
+                                <div key={attachment.id} className="overflow-hidden rounded-xl border border-white/20 bg-white/10">
+                                  {isImage ? (
+                                    <a href={attachmentUrl} target="_blank" rel="noreferrer">
+                                      <img src={attachmentUrl} alt={attachment.name} className="max-h-72 w-full object-cover" />
+                                    </a>
+                                  ) : (
+                                    <a href={attachmentUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-white/10">
+                                      <span className="truncate">{attachment.name}</span>
+                                      <span className="rounded bg-white/10 px-2 py-1 text-[10px] uppercase">File</span>
+                                    </a>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -781,7 +856,7 @@ export default function Chat() {
                           {isMunicipality ? (
                             <img src="/images/logo/cropped-LGU-Saint-Bernard-LOGO.png" alt="Municipality" className="h-6 w-6 object-contain" />
                           ) : room.seal_url ? (
-                            <img src={room.seal_url} alt={room.name} className="h-6 w-6 object-contain rounded" />
+                            <img src={resolveAssetUrl(room.seal_url)} alt={room.name} className="h-6 w-6 object-contain rounded" />
                           ) : (
                             '📍'
                           )}
@@ -853,6 +928,17 @@ export default function Chat() {
               </div>
             )}
 
+            {pendingAttachments.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800">
+                {pendingAttachments.map((attachment) => (
+                  <div key={attachment.id} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                    <span className="max-w-[180px] truncate">{attachment.name}</span>
+                    <button type="button" onClick={() => setPendingAttachments((current) => current.filter((item) => item.id !== attachment.id))} className="text-red-500">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Input & Send Button */}
             <form onSubmit={sendMessage} className="flex items-end gap-3">
               <div className="relative flex-1">
@@ -872,25 +958,34 @@ export default function Chat() {
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={!activeRoom || !body.trim() || sending}
-                className="flex h-11 items-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {sending ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    <span>Sending</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Send</span>
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                <label className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                  <input type="file" multiple className="hidden" onChange={handleAttachmentSelection} />
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l7.071-7.071a4 4 0 10-5.657-5.657L7.343 10.343a6 6 0 108.485 8.485l6.364-6.364" />
+                  </svg>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={!activeRoom || (!body.trim() && pendingAttachments.length === 0) || sending || uploadingAttachment}
+                  className="flex h-11 items-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {sending || uploadingAttachment ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span>{uploadingAttachment ? 'Uploading' : 'Sending'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Send</span>
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
 
             {error && (

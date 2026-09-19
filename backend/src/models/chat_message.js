@@ -7,4 +7,5 @@ module.exports = (sequelize) => sequelize.define('ChatMessage', {
   sender_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false },
   reply_to_id: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true },
   body: { type: DataTypes.STRING(2000), allowNull: false },
+  attachments: { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
 }, { tableName: 'chat_messages', timestamps: true, createdAt: 'created_at', updatedAt: false, underscored: true });

@@ -3,7 +3,7 @@ import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
-import { useApi } from "../../lib/api";
+import { resolveAssetUrl, useApi } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import { useEffect, useRef, useState } from "react";
 
@@ -144,7 +144,7 @@ export default function UserMetaCard({
             <div className="w-20 h-20 overflow-hidden border border-gray-200 rounded-full dark:border-gray-800">
               <label className="block w-full h-full cursor-pointer">
                 <img
-                  src={profile?.profileImageUrl || '/images/user/owner.jpg'}
+                  src={resolveAssetUrl(profile?.profileImageUrl) || '/images/user/owner.jpg'}
                   alt="user"
                   className="w-full h-full object-cover"
                   onError={(event) => {

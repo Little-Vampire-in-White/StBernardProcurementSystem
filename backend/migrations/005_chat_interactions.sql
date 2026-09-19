@@ -1,5 +1,6 @@
 ALTER TABLE chat_messages
   ADD COLUMN reply_to_id BIGINT UNSIGNED NULL AFTER sender_id,
+  ADD COLUMN attachments JSON NULL DEFAULT (JSON_ARRAY()) AFTER body,
   ADD CONSTRAINT fk_chat_messages_reply FOREIGN KEY (reply_to_id) REFERENCES chat_messages(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS chat_reactions (

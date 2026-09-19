@@ -1,5 +1,6 @@
 const { ChatMessage, ChatReaction, Barangay, Notification, User, UserBarangayAssignment } = require('../models');
 const { ROLES } = require('../constants/roles');
+const { storeUpload } = require('../services/uploads');
 
 const CHAT_ROLES = Object.values(ROLES);
 const ALLOWED_EMOJIS = ['👍', '❤️', '😊', '😂', '🎉', '😮', '😢', '🙏', '✅', '🔥'];
@@ -60,6 +61,7 @@ async function canAccessMessage(user, message) {
 function serializeMessages(messages, userId) {
   return messages.map((message) => {
     const data = message.toJSON ? message.toJSON() : message;
+    data.attachments = Array.isArray(data.attachments) ? data.attachments : [];
     data.reactions = (data.reactions || []).map((reaction) => ({
       ...reaction,
       is_mine: Number(reaction.user_id) === Number(userId),
@@ -123,22 +125,48 @@ async function listMessages(req, res) {
   } catch (error) { console.error('listMessages error', error); return res.status(500).json({ error: 'internal' }); }
 }
 
+async function uploadChatAttachment(req, res) {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'file required' });
+    const filePath = await storeUpload(req.file, 'uploads/chat');
+    const mimeType = req.file.mimetype || 'application/octet-stream';
+    const attachmentType = mimeType.startsWith('image/') ? 'image' : 'file';
+    return res.status(201).json({
+      ok: true,
+      attachment: {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name: req.file.originalname,
+        type: attachmentType,
+        mime_type: mimeType,
+        url: `/${filePath}`,
+      },
+    });
+  } catch (error) {
+    console.error('uploadChatAttachment error', error);
+    return res.status(500).json({ error: 'internal' });
+  }
+}
+
 async function sendMessage(req, res) {
   try {
     const room = await resolveRoom(req);
     const body = String(req.body.body || '').trim();
+    const rawAttachments = Array.isArray(req.body.attachments) ? req.body.attachments : [];
+    const attachments = rawAttachments.filter((attachment) => attachment && attachment.url && attachment.name).slice(0, 5);
     const replyToId = req.body.reply_to_id ? Number(req.body.reply_to_id) : null;
     if (room.error) return res.status(room.error === 'forbidden' ? 403 : 400).json({ error: room.error });
-    if (!body || body.length > 2000) return res.status(400).json({ error: 'message_body_required' });
+    if ((!body || body.length > 2000) && attachments.length === 0) return res.status(400).json({ error: 'message_body_required' });
+    if (body.length > 2000) return res.status(400).json({ error: 'message_body_required' });
     if (replyToId && (!Number.isInteger(replyToId) || replyToId < 1)) return res.status(400).json({ error: 'invalid_reply' });
     if (replyToId) {
       const replyTo = await ChatMessage.findByPk(replyToId);
       if (!replyTo || replyTo.room_type !== room.roomType || Number(replyTo.barangay_id || 0) !== Number(room.barangayId || 0)) return res.status(400).json({ error: 'invalid_reply' });
     }
-    const message = await ChatMessage.create({ room_type: room.roomType, barangay_id: room.barangayId, sender_id: req.user.id, reply_to_id: replyToId, body });
-    await createMessageNotifications(req.user, room, body);
+    const messageBody = body || (attachments.length ? 'Shared attachment' : '');
+    const message = await ChatMessage.create({ room_type: room.roomType, barangay_id: room.barangayId, sender_id: req.user.id, reply_to_id: replyToId, body: messageBody, attachments });
+    await createMessageNotifications(req.user, room, messageBody);
     const populated = await ChatMessage.findByPk(message.id, { include: messageInclude });
-    if (req.logAction) await req.logAction({ userId: req.user.id, action: 'SEND_CHAT_MESSAGE', targetTable: 'chat_messages', targetId: message.id, details: { room_type: room.roomType, barangay_id: room.barangayId } });
+    if (req.logAction) await req.logAction({ userId: req.user.id, action: 'SEND_CHAT_MESSAGE', targetTable: 'chat_messages', targetId: message.id, details: { room_type: room.roomType, barangay_id: room.barangayId, attachment_count: attachments.length } });
     return res.status(201).json({ ok: true, message: serializeMessages([populated], req.user.id)[0] });
   } catch (error) { console.error('sendMessage error', error); return res.status(500).json({ error: 'internal' }); }
 }
@@ -213,5 +241,5 @@ async function deleteMessage(req, res) {
   } catch (error) { console.error('deleteMessage error', error); return res.status(500).json({ error: 'internal' }); }
 }
 
-module.exports = { CHAT_ROLES, ALLOWED_EMOJIS, listRooms, listMessages, sendMessage, toggleReaction, updateMessage, deleteMessage };
+module.exports = { CHAT_ROLES, ALLOWED_EMOJIS, listRooms, listMessages, sendMessage, toggleReaction, updateMessage, deleteMessage, uploadChatAttachment };
 

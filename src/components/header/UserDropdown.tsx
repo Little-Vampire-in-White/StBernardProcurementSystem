@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { useAuth } from "../../context/AuthContext";
+import { resolveAssetUrl } from "../../lib/api";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,7 +24,7 @@ export default function UserDropdown() {
       >
         <span className="mr-2 h-9 w-9 overflow-hidden rounded-full sm:mr-3 sm:h-11 sm:w-11">
           <img
-            src={profile?.profileImageUrl || "/images/user/owner.jpg"}
+            src={resolveAssetUrl(profile?.profileImageUrl) || "/images/user/owner.jpg"}
             alt={`${profile?.displayName || "User"} profile picture`}
             className="h-full w-full object-cover"
             onError={(event) => {
